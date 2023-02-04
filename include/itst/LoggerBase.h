@@ -134,9 +134,9 @@ private:
   const LoggerBase &internalLogf(LogSeverity msg_sev, Ts log_items_tup,
                                  std::index_sequence<I...>) const {
 
-    static constexpr auto Splits =
-        cxx17::split(cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
-    static_assert(sizeof...(I) + 1 == Splits.size(),
+    static constexpr auto Splits = cxx17::splitFormatString(
+        cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
+    static_assert(sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>,
                   "Invalid number of format arguments");
 
 #ifndef ITST_DISABLE_LOGGER
@@ -153,11 +153,11 @@ private:
         writer(str);
     };
 
-    ((writeNonEmpty(Splits[I], writer),
+    ((writeNonEmpty(std::get<I>(Splits).str(), writer),
       printAccordingToType(std::get<I>(log_items_tup), writer)),
      ...);
 
-    writer(Splits.back());
+    writer(std::get<sizeof...(I)>(Splits).str());
 
 #if defined(ITST_DEBUG_LOGGING) && (_MSC_VER)
     flush();

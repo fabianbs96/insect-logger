@@ -19,7 +19,7 @@
         };                                                                     \
         return Fmt{};                                                          \
       }(),                                                                     \
-      ::itst::LogSeverity::SEV, __VA_ARGS__)
+      ::itst::LogSeverity::SEV, ##__VA_ARGS__)
 
 #define ITST_LOGGER_LOG(SEV, ...)                                              \
   {                                                                            \
@@ -29,7 +29,7 @@
 #define ITST_LOGGER_LOGF(SEV, FMT, ...)                                        \
   {                                                                            \
     ITST_LOGGER;                                                               \
-    ITST_LOGF(SEV, FMT, __VA_ARGS__);                                          \
+    ITST_LOGF(SEV, FMT, ##__VA_ARGS__);                                        \
   }
 #define ITST_LOG_FLUSH() logger.flush()
 
@@ -63,7 +63,7 @@
 #define ITST_LOGGER_ASSERTF(X, ...)                                            \
   {                                                                            \
     if (!(X)) [[unlikely]] {                                                   \
-      ITST_LOGGER_LOGF(Fatal, FMT, __VA_ARGS__);                               \
+      ITST_LOGGER_LOGF(Fatal, FMT, ##__VA_ARGS__);                             \
       ITST_LOG_FLUSH();                                                        \
       ITST_BUILTIN_TRAP;                                                       \
     }                                                                          \

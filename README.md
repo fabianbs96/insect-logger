@@ -83,7 +83,13 @@ To manually create such a simple logger instance, there are a few utility macros
     // static constexpr ConsoleLogger("my_own_fancy_category", LogSeverity::Warning);
 }
 ```
+### Message Format
 
+Each log message is formatted as follows:
+
+`[timestamp][severity][category]: content\n`
+
+The `timestep` is in the format `YYYY-MM-DD hh:mm:ss.xxxxxx` and the severity is in CAPS (`Fatal` is spelled `CRITICAL`).
 ### Log Severity
 
 Each logger and log message is assigned one severity of

@@ -54,7 +54,7 @@ template <typename T>
 static constexpr bool has_adl_to_string_v = detail::has_adl_to_string<T>::value;
 
 template <typename T>
-static constexpr bool is_printable_v = detail::is_iterable<T>::value;
+static constexpr bool is_printable_v = detail::is_printable<T>::value;
 
 template <typename T>
 static constexpr bool has_str_v = detail::has_str<T>::value;

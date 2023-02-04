@@ -33,7 +33,7 @@ void LoggerBase::FileWriter::operator()(
 #endif
 }
 
-void LoggerBase::flush() const { fflush(file_handle); }
+void LoggerBase::flushImpl(FILE *file_handle) noexcept { fflush(file_handle); }
 
 static constexpr std::array<char, 200> digits() noexcept {
   std::array<char, 200> ret{};

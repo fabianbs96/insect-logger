@@ -56,70 +56,9 @@ static constexpr CStrType<StringProvider> getCStr(StringProvider /*SP*/ = {}) {
 }
 
 template <char... Str>
-static constexpr size_t num_splits(TemplateString<Str...> /*S*/) {
-  constexpr std::array<char, sizeof...(Str)> Data = {Str...};
-  size_t Ret = 0;
-
-  bool OpenedBrace = false;
-
-  for (auto It = Data.begin(), End = Data.end(); It != End; ++It) {
-    if (*It == '{') {
-      if (!OpenedBrace) {
-        OpenedBrace = true;
-        continue;
-      }
-      OpenedBrace = false;
-      continue;
-    }
-
-    if (OpenedBrace) {
-      ++Ret;
-      OpenedBrace = false;
-      if (*It != '}')
-        throw "Invalid Format String: Opened incomplete Format Specifier."
-              "Expected '}' or '{' to escape the '{'";
-      if (It + 1 == End) {
-        break;
-      }
-    }
-  }
-
-  if (OpenedBrace) {
-    throw "Invalid Format String: Opened Format specifier without closing it";
-  }
-  return Ret;
-}
-
-template <char... Str>
 static constexpr TemplateString<Str..., '\n'>
 appendLf(TemplateString<Str...> /*S*/) {
   return {};
-}
-
-template <char... Str> constexpr auto split(TemplateString<Str...> S) {
-  constexpr size_t NumSplits = num_splits(S);
-
-  std::array<std::string_view, NumSplits + 1> Ret{};
-
-  size_t I = 0;
-  auto End = std::end(S.Data);
-  auto CurrStart = std::begin(S.Data);
-  auto It = CurrStart;
-
-  while (It != End) {
-    // assert(It + 1 != End);
-    if (*It == '{' && It[1] == '}') {
-      Ret[I] = std::string_view(CurrStart, It - CurrStart);
-      ++I;
-      It += 2;
-      CurrStart = It;
-    } else {
-      ++It;
-    }
-  }
-  // assert(I == NumSplits);
-  Ret.back() = std::string_view(CurrStart, End - CurrStart);
-  return Ret;
 }
 
 // ---

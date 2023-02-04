@@ -31,10 +31,29 @@ struct StreamType : public std::variant<StandardErr, StandardOut, FILE *> {
   }
 };
 
-/// An efficient, lightweight and thread-safe logger.
-/// The only thing not thread-safe is global_enforced_log_severity; however,
-/// it is expected to be set once at the beginning and never changed again.
 class ITST_API LoggerBase {
+public:
+  static constexpr size_t TabWidth = 4;
+
+  static std::optional<LogSeverity> global_enforced_log_severity;
+
+  static constexpr size_t getTimestepLength() noexcept {
+    return sizeof("2022-11-02 15:10:22.633977") - 1;
+  }
+
+  static constexpr LogSeverity DefaultSeverity =
+#ifdef ITST_DEBUG_LOGGING
+      LogSeverity::Debug
+#else
+      LogSeverity::Info
+#endif
+      ;
+
+protected:
+  explicit constexpr LoggerBase(std::string_view class_name,
+                                LogSeverity sev) noexcept
+      : class_name(class_name), severity(sev) {}
+
   struct ITST_API FileWriter {
     FILE *file_handle{};
     void operator()(std::string_view content) const noexcept;
@@ -47,125 +66,17 @@ class ITST_API LoggerBase {
 #endif
   };
 
-public:
-  static std::optional<LogSeverity> global_enforced_log_severity;
+  static void flushImpl(FILE *file_handle) noexcept;
 
-  explicit constexpr LoggerBase(std::string_view class_name, LogSeverity sev,
-                                StreamType log_target = StandardErr{}) noexcept
-      : file_handle(log_target), class_name(class_name), severity(sev) {}
-
-  template <typename... Ts>
-  const LoggerBase &log(LogSeverity msg_sev, const Ts &...log_items) const {
-#ifndef ITST_DISABLE_LOGGER
-    auto actual_sev = global_enforced_log_severity.value_or(severity);
-    if (actual_sev > msg_sev) {
-      return *this;
-    }
-
-    LockedFileWriter writer{file_handle};
-
-    printHeader(msg_sev, writer);
-
-    (printAccordingToType(log_items, writer), ...);
-
-    writer("\n");
-    // std::string_view content = "\n";
-    // fwrite(content.data(), 1, content.size(), file_handle);
-
-#ifdef ITST_DEBUG_LOGGING
-    flush();
-#endif
-
-#endif
-    return *this;
+  template <typename Writer>
+  static void indent(Writer writer, size_t indent_level) {
+    static constexpr char Indents[] =
+        "                                "; // NOLINT
+    writer(std::string_view(Indents, std::min<size_t>(indent_level * TabWidth,
+                                                      sizeof(Indents) - 1)));
   }
 
-  template <typename FormatStringProvider, typename... Ts>
-  const LoggerBase &logf(FormatStringProvider /*FSP*/, LogSeverity msg_sev,
-                         const Ts &...log_items) const {
-    return internalLogf<FormatStringProvider>(
-        msg_sev, std::tie(log_items...),
-        std::make_index_sequence<sizeof...(Ts)>());
-  }
-
-  template <typename... Ts>
-  const LoggerBase &logTrace(const Ts &...log_items) const {
-    return log(LogSeverity::Trace, log_items...);
-  }
-  template <typename... Ts>
-  const LoggerBase &logDebug(const Ts &...log_items) const {
-    return log(LogSeverity::Debug, log_items...);
-  }
-  template <typename... Ts>
-  const LoggerBase &logInfo(const Ts &...log_items) const {
-    return log(LogSeverity::Info, log_items...);
-  }
-  template <typename... Ts>
-  const LoggerBase &logWarning(const Ts &...log_items) const {
-    return log(LogSeverity::Warning, log_items...);
-  }
-  template <typename... Ts>
-  const LoggerBase &logError(const Ts &...log_items) const {
-    return log(LogSeverity::Error, log_items...);
-  }
-  template <typename... Ts>
-  const LoggerBase &logFatal(const Ts &...log_items) const {
-    return log(LogSeverity::Fatal, log_items...);
-  }
-
-  void flush() const;
-
-  // template <typename T> static std::string log_string(const T &item) { //
-  // NOLINT
-  //  std::string ret;
-  //  llvm::raw_string_ostream ros(ret);
-  //  printAccordingToType(item, [&ros](std::string_view str) { ros << str;
-  //  }); return ret;
-  //}
-
-  static constexpr size_t getTimestepLength() noexcept {
-    return sizeof("2022-11-02 15:10:22.633977") - 1;
-  }
-
-private:
-  template <typename Str> static void tell(Str S) { puts(__PRETTY_FUNCTION__); }
-
-  template <typename FormatStringProvider, typename Ts, size_t... I>
-  const LoggerBase &internalLogf(LogSeverity msg_sev, Ts log_items_tup,
-                                 std::index_sequence<I...>) const {
-
-    static constexpr auto Splits = cxx17::splitFormatString(
-        cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
-    static_assert(sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>,
-                  "Invalid number of format arguments");
-
-#ifndef ITST_DISABLE_LOGGER
-    auto actual_sev = global_enforced_log_severity.value_or(severity);
-    if (actual_sev > msg_sev) {
-      return *this;
-    }
-
-    LockedFileWriter writer{file_handle};
-    printHeader(msg_sev, writer);
-
-    auto writeNonEmpty = [](std::string_view str, FileWriter writer) {
-      if (!str.empty())
-        writer(str);
-    };
-
-    ((writeNonEmpty(std::get<I>(Splits).str(), writer),
-      printAccordingToType(std::get<I>(log_items_tup), writer)),
-     ...);
-
-    writer(std::get<sizeof...(I)>(Splits).str());
-
-#if defined(ITST_DEBUG_LOGGING) && (_MSC_VER)
-    flush();
-#endif
-
-#endif
-    return *this;
-  }
+  static void printTimestamp(FileWriter writer);
 
   void printHeader(LogSeverity msg_sev, FileWriter writer) const {
     writer("[");
@@ -175,13 +86,6 @@ private:
     writer("][");
     writer(class_name);
     writer("]: ");
-  }
-
-  template <typename Writer>
-  static void indent(Writer writer, size_t indent_level) {
-    static constexpr char Indents[] =
-        "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t"; // NOLINT
-    writer(std::string_view(Indents, std::min<size_t>(indent_level, 15)));
   }
 
   template <typename T, typename Writer>
@@ -217,7 +121,6 @@ private:
     } else if constexpr (is_iterable_v<ElemTy>) {
       writer("{\n");
       for (const auto &sub_element : item) {
-        writer("\t");
         printAccordingToType(sub_element, writer, indent_level + 1);
         writer("\n");
       }
@@ -244,10 +147,134 @@ private:
     }
   }
 
-  static void printTimestamp(FileWriter writer);
+  template <typename... Ts>
+  void logImpl(FILE *file_handle, LogSeverity msg_sev,
+               const Ts &...log_items) const {
+#ifndef ITST_DISABLE_LOGGER
+    auto actual_sev = global_enforced_log_severity.value_or(severity);
+    if (actual_sev > msg_sev) {
+      return;
+    }
 
-  StreamType file_handle{};
+    LockedFileWriter writer{file_handle};
+
+    printHeader(msg_sev, writer);
+
+    (printAccordingToType(log_items, writer), ...);
+
+    writer("\n");
+
+#if defined(ITST_DEBUG_LOGGING) && (_MSC_VER)
+    flush();
+#endif
+
+#endif
+  }
+
+  template <typename FormatStringProvider, typename Ts, size_t... I>
+  void internalLogf(FILE *file_handle, LogSeverity msg_sev, Ts log_items_tup,
+                    std::index_sequence<I...>) const {
+
+    static constexpr auto Splits = cxx17::splitFormatString(
+        cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
+    static_assert(sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>,
+                  "Invalid number of format arguments");
+
+#ifndef ITST_DISABLE_LOGGER
+    auto actual_sev = global_enforced_log_severity.value_or(severity);
+    if (actual_sev > msg_sev) {
+      return;
+    }
+
+    LockedFileWriter writer{file_handle};
+    printHeader(msg_sev, writer);
+
+    auto writeNonEmpty = [](std::string_view str, FileWriter writer) {
+      if (!str.empty())
+        writer(str);
+    };
+
+    ((writeNonEmpty(std::get<I>(Splits).str(), writer),
+      printAccordingToType(std::get<I>(log_items_tup), writer)),
+     ...);
+
+    writer(std::get<sizeof...(I)>(Splits).str());
+
+#if defined(ITST_DEBUG_LOGGING) && (_MSC_VER)
+    flush();
+#endif
+
+#endif
+  }
+
+  // ---
+
   std::string_view class_name{};
   LogSeverity severity{};
+};
+
+/// An efficient, lightweight and thread-safe logger.
+/// The only thing not thread-safe is global_enforced_log_severity; however,
+/// it is expected to be set once at the beginning and never changed again.
+template <typename Derived> class LoggerImpl : public LoggerBase {
+public:
+  explicit constexpr LoggerImpl(std::string_view class_name,
+                                LogSeverity sev) noexcept
+      : LoggerBase(class_name, sev) {}
+
+  template <typename... Ts>
+  const LoggerImpl &log(LogSeverity msg_sev, const Ts &...log_items) const {
+    logImpl(self().getFileHandle(), msg_sev, log_items...);
+    return *this;
+  }
+
+  template <typename FormatStringProvider, typename... Ts>
+  const LoggerImpl &logf(FormatStringProvider /*FSP*/, LogSeverity msg_sev,
+                         const Ts &...log_items) const {
+    internalLogf<FormatStringProvider>(
+        self().getFileHandle(), msg_sev, std::tie(log_items...),
+        std::make_index_sequence<sizeof...(Ts)>());
+    return *this;
+  }
+
+  template <typename... Ts>
+  const LoggerImpl &logTrace(const Ts &...log_items) const {
+    return log(LogSeverity::Trace, log_items...);
+  }
+  template <typename... Ts>
+  const LoggerImpl &logDebug(const Ts &...log_items) const {
+    return log(LogSeverity::Debug, log_items...);
+  }
+  template <typename... Ts>
+  const LoggerImpl &logInfo(const Ts &...log_items) const {
+    return log(LogSeverity::Info, log_items...);
+  }
+  template <typename... Ts>
+  const LoggerImpl &logWarning(const Ts &...log_items) const {
+    return log(LogSeverity::Warning, log_items...);
+  }
+  template <typename... Ts>
+  const LoggerImpl &logError(const Ts &...log_items) const {
+    return log(LogSeverity::Error, log_items...);
+  }
+  template <typename... Ts>
+  const LoggerImpl &logFatal(const Ts &...log_items) const {
+    return log(LogSeverity::Fatal, log_items...);
+  }
+
+  void flush() const { flushImpl(self().getFileHandle()); }
+
+  // template <typename T> static std::string log_string(const T &item) { //
+  // NOLINT
+  //  std::string ret;
+  //  llvm::raw_string_ostream ros(ret);
+  //  printAccordingToType(item, [&ros](std::string_view str) { ros << str;
+  //  }); return ret;
+  //}
+
+private:
+  constexpr const Derived &self() const noexcept {
+    return static_cast<const Derived &>(*this);
+  }
 };
 } // namespace itst

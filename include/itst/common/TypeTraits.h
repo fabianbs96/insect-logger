@@ -30,4 +30,9 @@ template <typename... T> Overloaded(T...) -> Overloaded<T...>;
 template <typename T>
 static constexpr bool is_optional_v = detail::is_optional<T>::value;
 
+/// Utility to check the typename of a template instantiation
+template <typename Str> static void tell(Str S) noexcept {
+  puts(__PRETTY_FUNCTION__);
+}
+
 } // namespace itst

@@ -3,7 +3,7 @@ A simple, lightweight logger with minimalistic dependencies
 
 ## Getting started
 
-After linking to libinsectlogger, just include the `Logger.hpp` header:
+After linking to `libinsect_logger`, just include the `Logger.hpp` header:
 
 ```C++
 #include "itst/Logger.hpp"

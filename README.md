@@ -43,7 +43,7 @@ Sample use:
 
 ```C++
 
-FileLogger logger(/*category: */"main");
+FileLogger logger(/*filename: */"output.log", /*category: */"main");
 
 logger.logInfo("Dies ist ein Test ", 42, ".");
 // equivalent to:
@@ -89,10 +89,11 @@ Each log message is formatted as follows:
 
 `[timestamp][severity][category]: content\n`
 
-The `timestep` is in the format `YYYY-MM-DD hh:mm:ss.xxxxxx` and the severity is in CAPS (`Fatal` is spelled `CRITICAL`).
+The `timestamp` is in the format `YYYY-MM-DD hh:mm:ss.xxxxxx` and the severity is in CAPS (`Fatal` is spelled `CRITICAL`).
+
 ### Log Severity
 
-Each logger and log message is assigned one severity of
+Each logger and log message is assigned one severity level of
 
 - Trace
 - Debug
@@ -104,14 +105,14 @@ Each logger and log message is assigned one severity of
 in increasing severity.
 
 The logger only prints a message if the message's severity is at least the severity of the logger itself.
-The default logger-severity is `Info`, but can be changed to `Debug` if compiling with `-DITST_DEBUG_LOGGING`.
+The default logger-severity is `Info` (if you don't specify one by yourself), but can be changed to `Debug` if compiling with `-DITST_DEBUG_LOGGING`.
 
 If you want to overwrite the severity of all loggers at runtime, you can set the variable `LoggerBase::global_enforced_log_severity` to the desired severity.
 Note, that this API is *not* thread-safe.
 
 ### Assertions
 
-The assertion system in C/C++ is very primitive and provides less usability, so the insect logger comes with its own assertion macros.
+The assertion system in C/C++ is very primitive not very usabile, so the insect logger comes with its own assertion macros.
 
 ```C++
 ITST_LOGGER;

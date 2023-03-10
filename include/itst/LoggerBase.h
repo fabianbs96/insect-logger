@@ -17,20 +17,6 @@
 
 namespace itst {
 
-struct StandardOut {};
-struct StandardErr {};
-
-struct StreamType : public std::variant<StandardErr, StandardOut, FILE *> {
-  using std::variant<StandardErr, StandardOut, FILE *>::variant;
-
-  operator FILE *() const noexcept {
-    return std::visit(Overloaded{[](StandardOut) { return stdout; },
-                                 [](StandardErr) { return stderr; },
-                                 [](FILE *F) { return F; }},
-                      *this);
-  }
-};
-
 class ITST_API LoggerBase {
 public:
   static constexpr size_t TabWidth = 4;

@@ -39,12 +39,10 @@ static constexpr std::array<char, 200> digits() noexcept {
   std::array<char, 200> ret{};
 
   for (size_t i = 0; i < 100; ++i) {
-    ret[i * 2] = char(
-        '0' +
-        i / 10); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
-    ret[i * 2 + 1] = char(
-        '0' +
-        i % 10); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+    ret[i * 2] = char('0' + i / 10);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+    ret[i * 2 + 1] = char('0' + i % 10);
   }
 
   return ret;

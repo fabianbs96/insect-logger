@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(_WIN64) || defined(_Win32)
+#if (defined(_WIN64) || defined(_Win32)) && defined(ITST_SHARED_LIB)
 
 #ifdef ITST_BUILD_DLL
 #define ITST_API __declspec(dllexport)

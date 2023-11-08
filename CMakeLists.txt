@@ -1,6 +1,11 @@
 cmake_minimum_required (VERSION 3.10)
 
-project (InsectLogger)
+# Allow portable use of CMAKE_VISIBILITY_INLINES_HIDDEN not only for shared libraries
+cmake_policy(SET CMP0063 NEW)
+
+project (InsectLogger
+    LANGUAGES CXX
+)
 set(CMAKE_PROJECT_NAME "InsectLogger")
 
 
@@ -11,19 +16,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ITST_BUILD_SHARED_LIB "Build a shared library (.so on UNIX-like systems, .dll on Windows) Default is OFF" OFF)
 option(ITST_DEBUG_LOGGING "Set the default log-severity to DEBUG (otherwise, the default is INFO)" OFF)
-if(ITST_DEBUG_LOGGING)
-    add_compile_definitions(ITST_DEBUG_LOGGING)
-endif()
 option(ITST_DISABLE_LOGGER "Disable all logging statically. It cannot be turned on at runtime (default is OFF). You may want to enable this in high-performance scenarios" OFF)
-if(ITST_DISABLE_LOGGER)
-    add_compile_definitions(ITST_DISABLE_LOGGER)
-endif()
 option(ITST_DISABLE_ASSERT "Disable the custom ITST_ASSERT macro. Useful in release builds for optimization (default OFF)" OFF)
-if(ITST_DISABLE_ASSERT)
-    add_compile_definitions(ITST_DISABLE_ASSERT)
-endif()
 
-include_directories(include/)
+option(CMAKE_VISIBILITY_INLINES_HIDDEN "Hide inlined functions from the DSO table (default ON)" ON)
+
+string(APPEND CMAKE_CXX_FLAGS " -MP -fstack-protector-strong -ffunction-sections -fdata-sections -pipe")
+string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO " -fno-omit-frame-pointer")
+string(APPEND CMAKE_CXX_FLAGS_RELEASE "")
+
+add_library(insect_logger_includes INTERFACE EXCLUDE_FROM_ALL)
+target_include_directories(insect_logger_includes INTERFACE include/)
+
 add_subdirectory(src)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sample")

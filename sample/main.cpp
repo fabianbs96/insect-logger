@@ -22,4 +22,9 @@ int main() {
 
   ITST_ASSERT(vec.size() == 3, "Invalid size");
   ITST_ASSERTF(vec.size() == 3, "Invalid size");
+
+  logger.stream(itst::LogSeverity::Info) << Foo{} << " from"
+                                         << " stream";
+  logger.stream(itst::LogSeverity::Info) << "> " << 42 << "blah";
+  ITST_LOG_STREAM(Info) << Foo{} << " from stream macro";
 }

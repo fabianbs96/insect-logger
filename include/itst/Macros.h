@@ -33,6 +33,7 @@
   }
 #define ITST_LOG_FLUSH() logger.flush()
 
+#define ITST_LOG_STREAM(SEV) logger.stream(::itst::LogSeverity::SEV)
 // ---
 
 #ifndef ITST_DISABLE_ASSERT

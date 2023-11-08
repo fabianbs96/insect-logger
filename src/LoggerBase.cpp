@@ -11,15 +11,15 @@
 namespace itst {
 std::optional<LogSeverity> LoggerBase::global_enforced_log_severity{};
 
-#ifdef _GNU_SOURCE
-LoggerBase::LockedFileWriter::LockedFileWriter(FILE *file_handle) noexcept
-    : FileWriter{file_handle} {
-  flockfile(this->file_handle);
+#if defined(_GNU_SOURCE) && !defined(ITST_DISABLE_LOGGER)
+auto LoggerBase::FileLock::create(FILE *file_handle) noexcept -> FileLock {
+  FileLock Lck;
+  Lck.file_handle = file_handle;
+  flockfile(file_handle);
+  return Lck;
 }
 
-LoggerBase::LockedFileWriter::~LockedFileWriter() noexcept {
-  funlockfile(this->file_handle);
-}
+void LoggerBase::FileLock::destroy() noexcept { funlockfile(file_handle); }
 #endif
 
 void LoggerBase::FileWriter::operator()(
@@ -35,6 +35,17 @@ void LoggerBase::FileWriter::operator()(
 
 void LoggerBase::flushImpl(FILE *file_handle) noexcept { fflush(file_handle); }
 
+void LoggerBase::printHeader(LogSeverity msg_sev,
+                             FileWriter writer) const noexcept {
+  writer("[");
+  printTimestamp(writer);
+  writer("][");
+  writer(to_string(msg_sev));
+  writer("][");
+  writer(class_name);
+  writer("]: ");
+}
+
 static constexpr std::array<char, 200> digits() noexcept {
   std::array<char, 200> ret{};
 
@@ -48,7 +59,7 @@ static constexpr std::array<char, 200> digits() noexcept {
   return ret;
 }
 
-void LoggerBase::printTimestamp(FileWriter writer) {
+void LoggerBase::printTimestamp(FileWriter writer) noexcept {
 
   static constexpr auto Digits = digits();
 
@@ -112,4 +123,5 @@ void LoggerBase::printTimestamp(FileWriter writer) {
 
   writer(std::string_view(buf.data(), ptr - buf.data()));
 }
+
 } // namespace itst

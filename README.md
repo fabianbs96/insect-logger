@@ -83,6 +83,29 @@ To manually create such a simple logger instance, there are a few utility macros
     // static constexpr ConsoleLogger("my_own_fancy_category", LogSeverity::Warning);
 }
 ```
+
+### Streaming
+
+Besides the `log*()` functions, the insect logger also supports a streaming interface that allows seamless integration with code that used a different logger previously (e.g., Boost log).
+
+The streaming interface is provided by the `logger.stream(severity)` function and can be used as follows:
+
+```C++
+ITST_LOGGER;
+
+ITST_LOG_STREAM(Info) << "Dies ist ein Test " << 42;
+// equivalent to:
+logger.stream(itst::LogSeverity::Info) << "Dies ist ein Test " << 42;
+// equivalent to:
+logger.logInfo("Dies ist ein Test ", 42);
+```
+
+The `stream()` function returns a temporary `LogStream` that locks the corresponding `logger` and prints the header.
+The overloaded `operator<<` uses the same underlying mechanism as the `log*()` functions for formatting the individual parts of the message.
+On destruction, the log message is completed with a line-feed and the `logger` gets unlocked.
+
+Note, that the `LogStream` is meant to be used as temporary object for streaming only, so it should not be stored in a variable, or returned from a function.
+
 ### Message Format
 
 Each log message is formatted as follows:
@@ -112,7 +135,7 @@ Note, that this API is *not* thread-safe.
 
 ### Assertions
 
-The assertion system in C/C++ is very primitive not very usabile, so the insect logger comes with its own assertion macros.
+The assertion system in C/C++ is very primitive not very usable, so the insect logger comes with its own assertion macros.
 
 ```C++
 ITST_LOGGER;

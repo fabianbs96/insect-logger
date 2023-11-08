@@ -3,7 +3,7 @@
 #include "LoggerBase.h"
 
 namespace itst {
-class FileLogger : public LoggerImpl<FileLogger> {
+class ITST_API FileLogger : public LoggerImpl<FileLogger> {
 public:
   explicit FileLogger(const char *file_name, std::string_view class_name,
                       LogSeverity sev = DefaultSeverity) noexcept;

@@ -13,7 +13,7 @@ enum class LogSeverity {
 #include "itst/LogSeverity.def"
 };
 
-::std::string_view ITST_API to_string(LogSeverity sev);
-::std::optional<LogSeverity> ITST_API from_string(std::string_view str);
+std::string_view ITST_API to_string(LogSeverity sev) noexcept;
+std::optional<LogSeverity> ITST_API from_string(std::string_view str) noexcept;
 
 } // namespace itst

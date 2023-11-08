@@ -3,7 +3,7 @@
 #include "LoggerBase.h"
 
 namespace itst {
-class StringLogger : public LoggerImpl<StringLogger> {
+class ITST_API StringLogger : public LoggerImpl<StringLogger> {
   friend LoggerImpl;
 
 public:

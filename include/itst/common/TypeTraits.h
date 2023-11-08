@@ -19,12 +19,21 @@ template <typename T> struct is_optional : std::false_type {};
 template <typename T> struct is_optional<std::optional<T>> : std::true_type {};
 } // namespace detail
 
-template <typename T> inline decltype(auto) adl_to_string(const T &value) {
+template <typename T> constexpr bool is_nothrow_to_string() noexcept {
+  using std::to_string;
+  return noexcept(to_string(std::declval<const T &>()));
+}
+
+template <typename T>
+inline decltype(auto)
+adl_to_string(const T &value) noexcept(is_nothrow_to_string<T>()) {
   using std::to_string;
   return to_string(value);
 }
 
-template <typename... T> struct Overloaded : T... { using T::operator()...; };
+template <typename... T> struct Overloaded : T... {
+  using T::operator()...;
+};
 template <typename... T> Overloaded(T...) -> Overloaded<T...>;
 
 template <typename T>

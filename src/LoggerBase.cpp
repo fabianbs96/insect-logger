@@ -15,11 +15,16 @@ std::optional<LogSeverity> LoggerBase::global_enforced_log_severity{};
 auto LoggerBase::FileLock::create(FILE *file_handle) noexcept -> FileLock {
   FileLock Lck;
   Lck.file_handle = file_handle;
-  flockfile(file_handle);
+  if (file_handle)
+    flockfile(file_handle);
+
   return Lck;
 }
 
-void LoggerBase::FileLock::destroy() noexcept { funlockfile(file_handle); }
+void LoggerBase::FileLock::destroy() noexcept {
+  assert(file_handle != nullptr);
+  funlockfile(file_handle);
+}
 #endif
 
 void LoggerBase::FileWriter::operator()(

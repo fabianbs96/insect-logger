@@ -98,11 +98,14 @@ protected:
     using ElemTy = std::decay_t<T>;
     using BaseElemTy = std::decay_t<std::remove_pointer_t<ElemTy>>;
 
-    if constexpr (std::is_convertible_v<T, std::string_view>) {
+    if constexpr (has_log_traits_v<T, Writer>) {
+      return noexcept(LogTraits<T>::printAccordingToType(
+          std::declval<const T &>(), std::declval<Writer>()));
+    } else if constexpr (std::is_convertible_v<T, std::string_view>) {
       return std::is_convertible_v<T, std::string_view>;
     } else if constexpr (std::is_enum_v<ElemTy> &&
                          has_adl_to_string_v<ElemTy>) {
-      return noexcept(adl_to_string(std::declval<ElemTy>));
+      return noexcept(adl_to_string(std::declval<ElemTy>()));
     } else if constexpr (std::is_integral_v<ElemTy>) {
       return true;
     } else if constexpr (has_str_v<ElemTy>) {
@@ -134,7 +137,9 @@ protected:
       indent(writer, indent_level);
     }
 
-    if constexpr (std::is_convertible_v<T, std::string_view>) {
+    if constexpr (has_log_traits_v<T, Writer>) {
+      LogTraits<T>::printAccordingToType(item, writer);
+    } else if constexpr (std::is_convertible_v<T, std::string_view>) {
       writer(std::string_view(item));
     } else if constexpr (std::is_enum_v<ElemTy> &&
                          has_adl_to_string_v<ElemTy>) {

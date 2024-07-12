@@ -44,4 +44,20 @@ template <typename Str> static void tell(Str S) noexcept {
   puts(__PRETTY_FUNCTION__);
 }
 
+template <typename T, typename Enable = void> struct LogTraits {
+  // template <typename Writer>
+  // static void printAccordingToType(const T &item, Writer writer);
+};
+
+template <typename T, typename Writer, typename = void>
+struct has_log_traits : std::false_type {};
+template <typename T, typename Writer>
+struct has_log_traits<T, Writer,
+                      std::void_t<decltype(LogTraits<T>::printAccordingToType(
+                          std::declval<const T &>(), std::declval<Writer>()))>>
+    : std::true_type {};
+
+template <typename T, typename Writer>
+static constexpr bool has_log_traits_v = has_log_traits<T, Writer>::value;
+
 } // namespace itst

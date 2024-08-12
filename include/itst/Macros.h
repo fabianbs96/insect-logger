@@ -40,7 +40,8 @@
 #define ITST_ASSERT(X, ...)                                                    \
   {                                                                            \
     if (!(X)) [[unlikely]] {                                                   \
-      ITST_LOG(Fatal, __FILE__, ":", __LINE__, ": ", __VA_ARGS__);             \
+      ITST_LOG(Fatal, __FILE__, ":", __LINE__, ": Assertion failed: ", #X);    \
+      ITST_LOG(Fatal, __FILE__, ":", __LINE__, ": note: ", __VA_ARGS__);       \
       ITST_LOG_FLUSH();                                                        \
       ITST_BUILTIN_TRAP;                                                       \
     }                                                                          \

@@ -96,7 +96,6 @@ protected:
       return false;
 
     using ElemTy = std::decay_t<T>;
-    using BaseElemTy = std::decay_t<std::remove_pointer_t<ElemTy>>;
 
     if constexpr (has_log_traits_v<T, Writer>) {
       return noexcept(LogTraits<T>::printAccordingToType(
@@ -131,7 +130,6 @@ protected:
       const T &item, Writer writer,
       size_t indent_level = 0) noexcept(isPrintNoexcept<T, Writer>()) {
     using ElemTy = std::decay_t<T>;
-    using BaseElemTy = std::decay_t<std::remove_pointer_t<ElemTy>>;
 
     if (indent_level) {
       indent(writer, indent_level);
@@ -149,6 +147,8 @@ protected:
       /// allow to_string to return sth different than string - it is just
       /// sufficient to be convertible to string_view
       writer(std::string_view(adl_to_string(item)));
+    } else if constexpr (std::is_same_v<ElemTy, bool>) {
+      writer(item ? "true" : "false");
     } else if constexpr (std::is_integral_v<ElemTy>) {
       std::array<char, sizeof("18446744073709551615")> buf{};
       auto [ptr, err] = std::to_chars(buf.begin(), buf.end(), item, 10);

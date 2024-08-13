@@ -19,6 +19,9 @@ option(ITST_DEBUG_LOGGING "Set the default log-severity to DEBUG (otherwise, the
 option(ITST_DISABLE_LOGGER "Disable all logging statically. It cannot be turned on at runtime (default is OFF). You may want to enable this in high-performance scenarios" OFF)
 option(ITST_DISABLE_ASSERT "Disable the custom ITST_ASSERT macro. Useful in release builds for optimization (default OFF)" OFF)
 
+set(ITST_CONSOLE_LOGGER_TARGET "stderr" CACHE STRING "The target for the ConsoleLogger. Either 'stdout' or 'stderr', defaults to 'stderr'")
+set_property(CACHE ITST_CONSOLE_LOGGER_TARGET PROPERTY STRINGS "stderr" "stdout")
+
 option(CMAKE_VISIBILITY_INLINES_HIDDEN "Hide inlined functions from the DSO table (default ON)" ON)
 
 string(APPEND CMAKE_CXX_FLAGS " -MP -fstack-protector-strong -ffunction-sections -fdata-sections -pipe")

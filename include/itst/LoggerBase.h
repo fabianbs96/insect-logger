@@ -215,7 +215,7 @@ protected:
 #endif // ITST_DISABLE_LOGGER
   }
 
-  void endLogging(FileLock lock) const noexcept {
+  void endLoggingWithLF(FileLock lock) const noexcept {
 #ifndef ITST_DISABLE_LOGGER
     if (lock) {
       FileWriter{lock.file_handle}("\n");
@@ -226,6 +226,16 @@ protected:
 #endif // ITST_DISABLE_LOGGER
   }
 
+  void endLogging([[maybe_unused]] FileLock lock) const noexcept {
+#ifndef ITST_DISABLE_LOGGER
+#if defined(ITST_DEBUG_LOGGING) && (_MSC_VER)
+    if (lock) {
+      flush();
+    }
+#endif
+#endif // ITST_DISABLE_LOGGER
+  }
+
   template <typename... Ts>
   void logImpl(FILE *file_handle, LogSeverity msg_sev,
                const Ts &...log_items) const
@@ -233,6 +243,7 @@ protected:
 #ifndef ITST_DISABLE_LOGGER
     if (auto lock = startLogging(file_handle, msg_sev)) {
       (printAccordingToType(log_items, FileWriter{file_handle}), ...);
+      FileWriter{file_handle}("\n");
       endLogging(std::move(lock));
     }
 #endif
@@ -251,15 +262,16 @@ protected:
 
     if (auto lock = startLogging(file_handle, msg_sev)) {
       FileWriter writer{file_handle};
-      auto writeNonEmpty = [](std::string_view str, FileWriter writer) {
-        if (!str.empty())
-          writer(str);
+      constexpr auto writeNonEmpty = [](auto str, FileWriter writer) {
+        if constexpr (!str.str().empty())
+          writer(str.str());
       };
 
-      ((writeNonEmpty(std::get<I>(Splits).str(), writer),
+      ((writeNonEmpty(std::get<I>(Splits), writer),
         printAccordingToType(std::get<I>(log_items_tup), writer)),
        ...);
 
+      writeNonEmpty(std::get<sizeof...(I)>(Splits), writer);
       endLogging(std::move(lock));
     }
 
@@ -364,17 +376,17 @@ public:
   //}
 
 private:
-  FileLock startLogging(LogSeverity msg_sev) const noexcept {
+  [[nodiscard]] FileLock startLogging(LogSeverity msg_sev) const noexcept {
     return this->LoggerBase::startLogging(self().getFileHandle(), msg_sev);
   }
 
-  constexpr const Derived &self() const noexcept {
+  [[nodiscard]] constexpr const Derived &self() const noexcept {
     return static_cast<const Derived &>(*this);
   }
 };
 
 template <typename LoggerT> inline LogStream<LoggerT>::~LogStream() noexcept {
-  logger.endLogging(std::move(writer));
+  logger.endLoggingWithLF(std::move(writer));
 }
 
 template <typename LoggerT>

@@ -2,6 +2,25 @@
 #include "itst/ConsoleLogger.h"
 #include "itst/Macros.h"
 
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+template <typename Fmt> void bar(Fmt F) {
+  using namespace itst;
+  constexpr auto Splits =
+      cxx17::splitFormatString(cxx17::appendLf(cxx17::getCStr<Fmt>()));
+
+  std::apply(
+      [](auto... Str) { (((std::cout << "> " << Str.str() << '\n')), ...); },
+      Splits);
+}
+
+void foo() {
+  bar(ITST_FMT("Testescape }}{{"));
+  bar(ITST_FMT("Testfmtescape {{{}}}"));
+}
+
 int main() {
   static constexpr itst::ConsoleLogger logger{"main"};
 
@@ -23,8 +42,9 @@ int main() {
   ITST_ASSERT(vec.size() == 3, "Invalid size");
   ITST_ASSERTF(vec.size() == 3, "Invalid size");
 
-  logger.stream(itst::LogSeverity::Info) << Foo{} << " from"
-                                         << " stream";
+  logger.stream(itst::LogSeverity::Info) << Foo{} << " from" << " stream";
   logger.stream(itst::LogSeverity::Info) << "> " << 42 << "blah";
   ITST_LOG_STREAM(Info) << Foo{} << " from stream macro";
+
+  foo();
 }

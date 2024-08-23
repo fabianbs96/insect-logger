@@ -3,6 +3,7 @@
 #include "itst/Macros.h"
 
 #include <iostream>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -32,19 +33,23 @@ int main() {
 
   ITST_LOGF(Warning, "Testformat{} {}.{}", 42, Foo{}, "123");
 
-  ITST_LOGGER_LOGF(Warning, "Testformat{} {}.{}", 42, Foo{}, "123");
+  ITST_LOGGER_LOGF(Warning, "Testformat{} {}.{} {}", 42, Foo{}, "123",
+                   std::optional<int>{});
   ITST_LOGF(Info, "Testescape }}{{");
   ITST_LOGF(Info, "Testfmtescape {{{}}}", Foo{});
 
   std::vector<std::vector<int>> vec = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
   ITST_LOG(Info, vec);
+  ITST_LOG(Info, std::vector{std::optional<int>{}, std::optional<int>{42},
+                             std::optional<int>{}});
 
   ITST_ASSERT(vec.size() == 3, "Invalid size");
   ITST_ASSERTF(vec.size() == 3, "Invalid size");
 
   logger.stream(itst::LogSeverity::Info) << Foo{} << " from" << " stream";
   logger.stream(itst::LogSeverity::Info) << "> " << 42 << "blah";
-  ITST_LOG_STREAM(Info) << Foo{} << " from stream macro";
+  ITST_LOG_STREAM(Info) << Foo{} << " from stream macro, " << 0.3 << " "
+                        << 42.4222333L;
 
   foo();
 }

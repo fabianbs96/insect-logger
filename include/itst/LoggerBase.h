@@ -7,15 +7,14 @@
 
 #include <cassert>
 #include <charconv>
-#include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include <variant>
 
 namespace itst {
 
@@ -151,8 +150,17 @@ protected:
       writer(item ? "true" : "false");
     } else if constexpr (std::is_integral_v<ElemTy>) {
       std::array<char, sizeof("18446744073709551615")> buf{};
-      auto [ptr, err] = std::to_chars(buf.begin(), buf.end(), item, 10);
-      writer(std::string_view(buf.begin(), ptr - buf.begin()));
+      auto [ptr, err] =
+          std::to_chars(buf.data(), buf.data() + buf.size(), item, 10);
+      writer(std::string_view(buf.data(), ptr - buf.data()));
+    } else if constexpr (std::is_floating_point_v<ElemTy>) {
+      // For the buffer-size, see the libstdc++ impl of std::to_string
+      std::array<char, std::numeric_limits<ElemTy>::max_exponent10 + 20> buf{};
+      ptrdiff_t Len{};
+      constexpr const char *Fmt =
+          std::is_same_v<long double, ElemTy> ? "%Lg" : "%g";
+      Len = snprintf(buf.data(), buf.size(), Fmt, item);
+      writer(std::string_view(buf.data(), Len));
     } else if constexpr (has_str_v<ElemTy>) {
       writer(item.str());
     } else if constexpr (has_toString_v<ElemTy>) {
@@ -174,7 +182,7 @@ protected:
         writer("\n");
       }
       indent(writer, indent_level);
-      writer("}\n");
+      writer("}");
     } else {
       // hint: static_assert is expected to be at compile time not runtime
       static_assert(is_printable_v<ElemTy>,
@@ -190,10 +198,15 @@ protected:
   template <typename T, typename Writer>
   static void printAccordingToType(const std::optional<T> &item, Writer writer,
                                    size_t indent_level = 0) {
+    if (indent_level) {
+      indent(writer, indent_level);
+    }
     if (!item) {
       writer("<none>");
     } else {
-      printAccordingToType(*item, writer, indent_level);
+      writer("<some ");
+      printAccordingToType(*item, writer, 0);
+      writer(">");
     }
   }
 
@@ -255,26 +268,30 @@ protected:
 
     static constexpr auto Splits = cxx17::splitFormatString(
         cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
-    static_assert(sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>,
-                  "Invalid number of format arguments");
+    static_assert(sizeof...(I) + 1 <= std::tuple_size_v<decltype(Splits)>,
+                  "Not enough format arguments specified");
+    static_assert(sizeof...(I) + 1 >= std::tuple_size_v<decltype(Splits)>,
+                  "Too many format arguments specified");
 
 #ifndef ITST_DISABLE_LOGGER
+    // Note: Wrap the following into an if constexpr, to prevent subsequent
+    // errors after the static_assert
+    if constexpr (sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>) {
+      if (auto lock = startLogging(file_handle, msg_sev)) {
+        FileWriter writer{file_handle};
+        constexpr auto writeNonEmpty = [](auto str, FileWriter writer) {
+          if constexpr (!str.str().empty())
+            writer(str.str());
+        };
 
-    if (auto lock = startLogging(file_handle, msg_sev)) {
-      FileWriter writer{file_handle};
-      constexpr auto writeNonEmpty = [](auto str, FileWriter writer) {
-        if constexpr (!str.str().empty())
-          writer(str.str());
-      };
+        ((writeNonEmpty(std::get<I>(Splits), writer),
+          printAccordingToType(std::get<I>(log_items_tup), writer)),
+         ...);
 
-      ((writeNonEmpty(std::get<I>(Splits), writer),
-        printAccordingToType(std::get<I>(log_items_tup), writer)),
-       ...);
-
-      writeNonEmpty(std::get<sizeof...(I)>(Splits), writer);
-      endLogging(std::move(lock));
+        writeNonEmpty(std::get<sizeof...(I)>(Splits), writer);
+        endLogging(std::move(lock));
+      }
     }
-
 #endif
   }
 

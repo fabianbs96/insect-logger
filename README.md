@@ -21,6 +21,7 @@ ninja
 ```
 
 To include the insect logger into your project, you may want to `add_subdirectory()` it from your `CMakeLists.txt`.
+Then, you can use the cmake-target `insect_logger`.
 
 ## Logging
 
@@ -151,4 +152,26 @@ If you don't have such a logger instance available, you may want to use
 ```C++
 ITST_LOGGER_ASSERT(x != 0, "x (", x, ") should not be zero");
 ITST_LOGGER_ASSERTF(x != 0, "x ({}) should not be zero", x);
+```
+
+### Customization
+
+In general, all types `T` are loggable, if one of the following functions is callable:
+- `std::ostream& operator<<(std::ostream&, const T&)`
+- `to_string(const T&)` returning sth convertible to `std::string_view`
+- `T::toString()` returning sth convertible to `std::string_view`
+- `T::str()` returning sth convertible to `std::string_view`
+
+Iterable containers of such types are loggable as well.
+
+If you want to use the logger-internal printing logic to implement your stringify function, you can specialize the type-trait `itst::LogTraits<T>`.
+Then, you need to implement the static member function:
+```C++
+template <typename Printer>
+static void printAccordingToType(const T &item, Printer printer) 
+                        noexcept(Printer::template isPrintNoexcept<T>()) {
+  // To print any sub-object of type other than T, just call `printer(value)` as a function.
+  // If you add new-lines and want to add proper indendation, pass `true` as second 
+  // parameter to the printer.
+}
 ```

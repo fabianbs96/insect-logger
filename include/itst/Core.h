@@ -37,3 +37,10 @@
 #else
 #define ITST_BUILTIN_TRAP *(volatile int *)0x11 = 0
 #endif
+
+#ifdef __GNUC__
+#include <cstdlib>
+#define ITST_ABORT ::abort()
+#else
+#define ITST_ABORT ITST_BUILTIN_TRAP
+#endif

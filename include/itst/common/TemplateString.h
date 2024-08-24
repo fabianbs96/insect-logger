@@ -14,6 +14,7 @@ template <char... Str> struct TemplateString {
   }
   [[nodiscard]] static constexpr bool empty() noexcept { return size() == 0; }
 
+  // NOLINTNEXTLINE(readability-identifier-naming)
   static constexpr char Data[] = {Str..., '\0'};
 
   [[nodiscard]] static constexpr std::string_view str() noexcept {
@@ -23,6 +24,7 @@ template <char... Str> struct TemplateString {
   template <char C> using append_t = TemplateString<Str..., C>;
 };
 
+// NOLINTNEXTLINE(readability-identifier-naming)
 template <typename T, typename U> struct tuple_append {};
 template <typename U, typename... Ts>
 struct tuple_append<std::tuple<Ts...>, U> {
@@ -31,6 +33,7 @@ struct tuple_append<std::tuple<Ts...>, U> {
 template <typename T, typename U>
 using tuple_append_t = typename tuple_append<T, U>::type;
 
+// NOLINTNEXTLINE(readability-identifier-naming)
 static constexpr size_t c_strlen(const char *Str, size_t Len = 0) {
   return *Str == '\0' ? Len : c_strlen(Str + 1, Len + 1);
 }
@@ -97,7 +100,7 @@ template <typename Head, typename Tail> struct FmtStringSplitter<Head, Tail> {
 };
 
 template <char... Str>
-constexpr auto splitFormatString(TemplateString<Str...> S) noexcept {
+constexpr auto splitFormatString(TemplateString<Str...> /*S*/) noexcept {
   return typename FmtStringSplitter<TemplateString<>, std::tuple<>,
                                     Str...>::type{};
 }

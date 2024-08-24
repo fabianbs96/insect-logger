@@ -1,0 +1,11 @@
+BasedOnStyle: LLVM
+SortIncludes: true
+IncludeBlocks: Regroup
+BreakStringLiterals: true
+IncludeCategories:
+  - Regex:           '^"itst/'
+    Priority:        1
+  - Regex:           '".*"'
+    Priority:        2
+  - Regex:           '<[[:alnum:]_]+>'
+    Priority:        3

@@ -38,6 +38,16 @@ public:
 #endif
       ;
 
+  template <typename Writer>
+  inline static void indent(Writer writer, size_t indent_level) noexcept {
+    static constexpr char Indents[] = // NOLINT
+        "                                ";
+    if (indent_level) {
+      writer(std::string_view(Indents, std::min<size_t>(indent_level * TabWidth,
+                                                        sizeof(Indents) - 1)));
+    }
+  }
+
 protected:
   explicit constexpr LoggerBase(std::string_view class_name,
                                 LogSeverity sev) noexcept
@@ -77,138 +87,141 @@ protected:
 
   static void flushImpl(FILE *file_handle) noexcept;
 
-  template <typename Writer>
-  static void indent(Writer writer, size_t indent_level) noexcept {
-    static constexpr char Indents[] =
-        "                                "; // NOLINT
-    writer(std::string_view(Indents, std::min<size_t>(indent_level * TabWidth,
-                                                      sizeof(Indents) - 1)));
-  }
-
   static void printTimestamp(FileWriter writer) noexcept;
 
   void printHeader(LogSeverity msg_sev, FileWriter writer) const noexcept;
 
-  template <typename T, typename Writer>
-  static constexpr bool isPrintNoexcept() {
-    if (!noexcept(std::declval<Writer>()("")))
-      return false;
+  template <typename Writer> struct Printer {
+    Writer writer;
+    size_t indent_level = 0;
 
-    using ElemTy = std::decay_t<T>;
+    inline void indent() const { LoggerBase::indent(writer, indent_level); }
 
-    if constexpr (has_log_traits_v<T, Writer>) {
-      return noexcept(LogTraits<T>::printAccordingToType(
-          std::declval<const T &>(), std::declval<Writer>()));
-    } else if constexpr (std::is_convertible_v<T, std::string_view>) {
-      return std::is_convertible_v<T, std::string_view>;
-    } else if constexpr (std::is_enum_v<ElemTy> &&
-                         has_adl_to_string_v<ElemTy>) {
-      return noexcept(adl_to_string(std::declval<ElemTy>()));
-    } else if constexpr (std::is_integral_v<ElemTy>) {
-      return true;
-    } else if constexpr (has_str_v<ElemTy>) {
-      return noexcept(std::declval<const T &>().str());
-    } else if constexpr (has_toString_v<ElemTy>) {
-      return noexcept(std::declval<const T &>().toString());
-    } else if constexpr (has_adl_to_string_v<ElemTy>) {
-      return is_nothrow_to_string<ElemTy>();
-    } else if constexpr (is_printable_v<ElemTy>) {
-      return false;
-    } else if constexpr (is_iterable_v<ElemTy>) {
-      using std::begin;
-      return isPrintNoexcept<
-          std::decay_t<decltype(*begin(std::declval<ElemTy>()))>, Writer>();
+    template <typename T> static constexpr bool isPrintNoexcept() {
+      if (!noexcept(std::declval<Writer>()("")))
+        return false;
 
-    } else {
-      return false;
-    }
-  }
+      using ElemTy = std::decay_t<T>;
 
-  template <typename T, typename Writer>
-  static void printAccordingToType(
-      const T &item, Writer writer,
-      size_t indent_level = 0) noexcept(isPrintNoexcept<T, Writer>()) {
-    using ElemTy = std::decay_t<T>;
+      if constexpr (has_log_traits_v<T, Printer<Writer>>) {
+        return noexcept(LogTraits<T>::printAccordingToType(
+            std::declval<const T &>(), std::declval<Printer<Writer>>()));
+      } else if constexpr (std::is_convertible_v<T, std::string_view>) {
+        return std::is_convertible_v<T, std::string_view>;
+      } else if constexpr (std::is_enum_v<ElemTy> &&
+                           has_adl_to_string_v<ElemTy>) {
+        return noexcept(adl_to_string(std::declval<ElemTy>()));
+      } else if constexpr (std::is_integral_v<ElemTy>) {
+        return true;
+      } else if constexpr (has_str_v<ElemTy>) {
+        return noexcept(std::declval<const T &>().str());
+      } else if constexpr (has_toString_v<ElemTy>) {
+        return noexcept(std::declval<const T &>().toString());
+      } else if constexpr (has_adl_to_string_v<ElemTy>) {
+        return is_nothrow_to_string<ElemTy>();
+      } else if constexpr (is_printable_v<ElemTy>) {
+        return false;
+      } else if constexpr (is_iterable_v<ElemTy>) {
+        using std::begin;
+        return isPrintNoexcept<
+            std::decay_t<decltype(*begin(std::declval<ElemTy>()))>>();
 
-    if (indent_level) {
-      indent(writer, indent_level);
-    }
-
-    if constexpr (has_log_traits_v<T, Writer>) {
-      LogTraits<T>::printAccordingToType(item, writer);
-    } else if constexpr (std::is_convertible_v<T, std::string_view>) {
-      writer(std::string_view(item));
-    } else if constexpr (std::is_enum_v<ElemTy> &&
-                         has_adl_to_string_v<ElemTy>) {
-      /// NOTE: Have the case for enums here already, since enums are
-      /// printable as integers and we want to give pretty-printing higher
-      /// priority NOTE: Explicitly cast to std::string_view, since we now
-      /// allow to_string to return sth different than string - it is just
-      /// sufficient to be convertible to string_view
-      writer(std::string_view(adl_to_string(item)));
-    } else if constexpr (std::is_same_v<ElemTy, bool>) {
-      writer(item ? "true" : "false");
-    } else if constexpr (std::is_integral_v<ElemTy>) {
-      std::array<char, sizeof("18446744073709551615")> buf{};
-      auto [ptr, err] =
-          std::to_chars(buf.data(), buf.data() + buf.size(), item, 10);
-      writer(std::string_view(buf.data(), ptr - buf.data()));
-    } else if constexpr (std::is_floating_point_v<ElemTy>) {
-      // For the buffer-size, see the libstdc++ impl of std::to_string
-      std::array<char, std::numeric_limits<ElemTy>::max_exponent10 + 20> buf{};
-      ptrdiff_t Len{};
-      constexpr const char *Fmt =
-          std::is_same_v<long double, ElemTy> ? "%Lg" : "%g";
-      Len = snprintf(buf.data(), buf.size(), Fmt, item);
-      writer(std::string_view(buf.data(), Len));
-    } else if constexpr (has_str_v<ElemTy>) {
-      writer(item.str());
-    } else if constexpr (has_toString_v<ElemTy>) {
-      writer(item.toString());
-    } else if constexpr (has_adl_to_string_v<ElemTy>) {
-      writer(std::string_view(adl_to_string(item)));
-    } else if constexpr (is_printable_v<ElemTy>) {
-      std::ostringstream os;
-      os << item;
-#if __cplusplus >= 202002L
-      writer(os.view());
-#else
-      writer(os.str());
-#endif
-    } else if constexpr (is_iterable_v<ElemTy>) {
-      writer("{\n");
-      for (const auto &sub_element : item) {
-        printAccordingToType(sub_element, writer, indent_level + 1);
-        writer("\n");
+      } else {
+        return false;
       }
-      indent(writer, indent_level);
-      writer("}");
-    } else {
-      // hint: static_assert is expected to be at compile time not runtime
-      static_assert(is_printable_v<ElemTy>,
-                    "The type of the logged data is not printable. Please add "
-                    "an appropriate overload of "
-                    "operator<<(std::ostream&, const ElemTy&) or "
-                    "to_string(const ElemTy&) or convert "
-                    "it to a printable type, e.g. std::string "
-                    "before logging");
     }
-  }
 
-  template <typename T, typename Writer>
-  static void printAccordingToType(const std::optional<T> &item, Writer writer,
-                                   size_t indent_level = 0) {
-    if (indent_level) {
-      indent(writer, indent_level);
+    template <typename T>
+    void operator()(const T &item,
+                    bool on_new_line = false) noexcept(isPrintNoexcept<T>()) {
+      using ElemTy = std::decay_t<T>;
+
+      if (on_new_line)
+        indent();
+
+      if constexpr (has_log_traits_v<T, Printer<Writer>>) {
+        LogTraits<T>::printAccordingToType(item, *this);
+      } else if constexpr (has_log_traits_v<T, Printer<Writer>>) {
+        LogTraits<T>::printAccordingToType(item, *this);
+      } else if constexpr (std::is_convertible_v<T, std::string_view>) {
+        writer(std::string_view(item));
+      } else if constexpr (std::is_enum_v<ElemTy> &&
+                           has_adl_to_string_v<ElemTy>) {
+        /// NOTE: Have the case for enums here already, since enums are
+        /// printable as integers and we want to give pretty-printing higher
+        /// priority NOTE: Explicitly cast to std::string_view, since we now
+        /// allow to_string to return sth different than string - it is just
+        /// sufficient to be convertible to string_view
+        writer(std::string_view(adl_to_string(item)));
+      } else if constexpr (std::is_same_v<ElemTy, bool>) {
+        writer(item ? "true" : "false");
+      } else if constexpr (std::is_integral_v<ElemTy>) {
+        std::array<char, sizeof("18446744073709551615")> buf{};
+        auto [ptr, err] =
+            std::to_chars(buf.data(), buf.data() + buf.size(), item, 10);
+        writer(std::string_view(buf.data(), ptr - buf.data()));
+      } else if constexpr (std::is_floating_point_v<ElemTy>) {
+        // For the buffer-size, see the libstdc++ impl of std::to_string
+        std::array<char, std::numeric_limits<ElemTy>::max_exponent10 + 20>
+            buf{};
+        ptrdiff_t Len{};
+        constexpr const char *Fmt =
+            std::is_same_v<long double, ElemTy> ? "%Lg" : "%g";
+        Len = snprintf(buf.data(), buf.size(), Fmt, item);
+        writer(std::string_view(buf.data(), Len));
+      } else if constexpr (has_str_v<ElemTy>) {
+        writer(item.str());
+      } else if constexpr (has_toString_v<ElemTy>) {
+        writer(item.toString());
+      } else if constexpr (has_adl_to_string_v<ElemTy>) {
+        writer(std::string_view(adl_to_string(item)));
+      } else if constexpr (is_printable_v<ElemTy>) {
+        std::ostringstream os;
+        os << item;
+#if __cplusplus >= 202002L
+        writer(os.view());
+#else
+        writer(os.str());
+#endif
+      } else if constexpr (is_iterable_v<ElemTy>) {
+        writer("{\n");
+        indent_level++;
+        for (const auto &sub_element : item) {
+          (*this)(sub_element, true);
+          writer("\n");
+        }
+        indent_level--;
+        indent();
+        writer("}");
+      } else {
+        // hint: static_assert is expected to be at compile time not runtime
+        static_assert(
+            is_printable_v<ElemTy>,
+            "The type of the logged data is not printable. Please add "
+            "an appropriate overload of "
+            "operator<<(std::ostream&, const ElemTy&) or "
+            "to_string(const ElemTy&) or convert "
+            "it to a printable type, e.g. std::string "
+            "before logging");
+      }
     }
-    if (!item) {
-      writer("<none>");
-    } else {
-      writer("<some ");
-      printAccordingToType(*item, writer, 0);
-      writer(">");
-    }
-  }
+
+    // template <typename T>
+    // void operator()(const std::optional<T> &item, size_t indent_level = 0)
+    // const
+    //     noexcept(isPrintNoexcept<T>()) {
+    //   if (indent_level) {
+    //     indent(writer, indent_level);
+    //   }
+    //   if (!item) {
+    //     writer("<none>");
+    //   } else {
+    //     writer("<some ");
+    //     (*this)(*item, 0);
+    //     writer(">");
+    //   }
+    // }
+  };
 
   FileLock startLogging(FILE *file_handle, LogSeverity msg_sev) const noexcept {
 #ifndef ITST_DISABLE_LOGGER
@@ -249,13 +262,19 @@ protected:
 #endif // ITST_DISABLE_LOGGER
   }
 
+  [[nodiscard]] constexpr Printer<FileWriter>
+  getPrinter(FILE *file_handle) const noexcept {
+    return {{file_handle}};
+  }
+
   template <typename... Ts>
   void logImpl(FILE *file_handle, LogSeverity msg_sev,
                const Ts &...log_items) const
-      noexcept((... && isPrintNoexcept<Ts, FileWriter>())) {
+      noexcept((... && Printer<FileWriter>::isPrintNoexcept<Ts>())) {
 #ifndef ITST_DISABLE_LOGGER
     if (auto lock = startLogging(file_handle, msg_sev)) {
-      (printAccordingToType(log_items, FileWriter{file_handle}), ...);
+      auto printer = getPrinter(file_handle);
+      (printer(log_items), ...);
       FileWriter{file_handle}("\n");
       endLogging(std::move(lock));
     }
@@ -284,8 +303,9 @@ protected:
             writer(str.str());
         };
 
+        auto printer = getPrinter(file_handle);
         ((writeNonEmpty(std::get<I>(Splits), writer),
-          printAccordingToType(std::get<I>(log_items_tup), writer)),
+          printer(std::get<I>(log_items_tup))),
          ...);
 
         writeNonEmpty(std::get<sizeof...(I)>(Splits), writer);
@@ -412,8 +432,7 @@ inline const itst::LogStream<LoggerT> &
 LogStream<LoggerT>::operator<<(const T &value) const {
 #ifndef ITST_DISABLE_LOGGER
   if (writer)
-    logger.printAccordingToType(value,
-                                LoggerBase::FileWriter{writer.file_handle});
+    logger.getPrinter(writer.file_handle)(value);
 #endif
   return *this;
 }

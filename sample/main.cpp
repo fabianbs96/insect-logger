@@ -1,8 +1,10 @@
 
 #include "itst/ConsoleLogger.h"
+#include "itst/LoggerBase.h"
 #include "itst/Macros.h"
 
 #include <iostream>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -40,8 +42,8 @@ int main() {
 
   std::vector<std::vector<int>> vec = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
   ITST_LOG(Info, vec);
-  ITST_LOG(Info, std::vector{std::optional<int>{}, std::optional<int>{42},
-                             std::optional<int>{}});
+  ITST_LOG(Info, std::vector<std::optional<std::vector<int>>>{
+                     std::nullopt, {{42, 43}}, std::nullopt});
 
   ITST_ASSERT(vec.size() == 3, "Invalid size");
   ITST_ASSERTF(vec.size() == 3, "Invalid size");

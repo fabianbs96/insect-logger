@@ -44,20 +44,20 @@
 
 namespace itst::detail {
 template <typename LoggerT, typename... Msg>
-static inline void assertFailMessage(const LoggerImpl<LoggerT> &Logger,
-                                     const char *File, unsigned Line,
-                                     const Msg &...M) {
+static inline void assertFailMessage(const LoggerImpl<LoggerT> &logger,
+                                     const char *file, unsigned line,
+                                     const Msg &...m) {
   if constexpr (sizeof...(Msg) != 0) {
-    Logger.log(LogSeverity::Fatal, File, ":", Line, ": note: ", M...);
+    logger.log(LogSeverity::Fatal, file, ":", line, ": note: ", m...);
   }
 }
 
 template <typename LoggerT, typename Fmt, typename... Msg>
-static inline void assertFailMessagef(const LoggerImpl<LoggerT> &Logger, Fmt F,
-                                      const char *File, unsigned Line,
-                                      const Msg &...M) {
+static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
+                                      const char *file, unsigned line,
+                                      const Msg &...m) {
   if constexpr (sizeof...(Msg) != 0) {
-    Logger.logf(F, LogSeverity::Fatal, File, Line, M...);
+    logger.logf(f, LogSeverity::Fatal, file, line, m...);
   }
 }
 } // namespace itst::detail

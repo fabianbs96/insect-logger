@@ -164,11 +164,11 @@ protected:
         // For the buffer-size, see the libstdc++ impl of std::to_string
         std::array<char, std::numeric_limits<ElemTy>::max_exponent10 + 20>
             buf{};
-        ptrdiff_t Len{};
+        ptrdiff_t len{};
         constexpr const char *Fmt =
             std::is_same_v<long double, ElemTy> ? "%Lg" : "%g";
-        Len = snprintf(buf.data(), buf.size(), Fmt, item);
-        writer(std::string_view(buf.data(), Len));
+        len = snprintf(buf.data(), buf.size(), Fmt, item);
+        writer(std::string_view(buf.data(), len));
       } else if constexpr (has_str_v<ElemTy>) {
         writer(item.str());
       } else if constexpr (has_toString_v<ElemTy>) {
@@ -298,17 +298,17 @@ protected:
     if constexpr (sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>) {
       if (auto lock = startLogging(file_handle, msg_sev)) {
         FileWriter writer{file_handle};
-        constexpr auto writeNonEmpty = [](auto str, FileWriter writer) {
+        constexpr auto WriteNonEmpty = [](auto str, FileWriter writer) {
           if constexpr (!str.str().empty())
             writer(str.str());
         };
 
         auto printer = getPrinter(file_handle);
-        ((writeNonEmpty(std::get<I>(Splits), writer),
+        ((WriteNonEmpty(std::get<I>(Splits), writer),
           printer(std::get<I>(log_items_tup))),
          ...);
 
-        writeNonEmpty(std::get<sizeof...(I)>(Splits), writer);
+        WriteNonEmpty(std::get<sizeof...(I)>(Splits), writer);
         endLogging(std::move(lock));
       }
     }

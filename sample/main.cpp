@@ -9,13 +9,13 @@
 #include <tuple>
 #include <vector>
 
-template <typename Fmt> void bar(Fmt F) {
+template <typename Fmt> void bar(Fmt /*F*/) {
   using namespace itst;
   constexpr auto Splits =
       cxx17::splitFormatString(cxx17::appendLf(cxx17::getCStr<Fmt>()));
 
   std::apply(
-      [](auto... Str) { (((std::cout << "> " << Str.str() << '\n')), ...); },
+      [](auto... str) { (((std::cout << "> " << str.str() << '\n')), ...); },
       Splits);
 }
 
@@ -28,7 +28,7 @@ int main() {
   static constexpr itst::ConsoleLogger logger{"main"};
 
   struct Foo {
-    std::string str() const { return "Hello"; }
+    [[nodiscard]] std::string str() const { return "Hello"; }
   };
 
   logger.logInfo("Dies ist ein Test ", 42, Foo{});

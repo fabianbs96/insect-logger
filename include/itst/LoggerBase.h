@@ -89,7 +89,10 @@ protected:
 
   static void printTimestamp(FileWriter writer) noexcept;
 
-  void printHeader(LogSeverity msg_sev, FileWriter writer) const noexcept;
+  void printHeader(LogSeverity msg_sev, FileWriter writer,
+                   std::true_type with_colors) const noexcept;
+  void printHeader(LogSeverity msg_sev, FileWriter writer,
+                   std::false_type with_colors) const noexcept;
 
   template <typename Writer> struct Printer {
     Writer writer;
@@ -223,7 +226,9 @@ protected:
     // }
   };
 
-  FileLock startLogging(FILE *file_handle, LogSeverity msg_sev) const noexcept {
+  template <typename WithColorsT>
+  FileLock startLogging(FILE *file_handle, LogSeverity msg_sev,
+                        WithColorsT with_colors) const noexcept {
 #ifndef ITST_DISABLE_LOGGER
 
     auto actual_sev = global_enforced_log_severity.value_or(severity);
@@ -233,7 +238,7 @@ protected:
       return lock;
     }
 
-    printHeader(msg_sev, FileWriter{file_handle});
+    printHeader(msg_sev, FileWriter{file_handle}, with_colors);
 
     return lock;
 #else
@@ -267,12 +272,12 @@ protected:
     return {{file_handle}};
   }
 
-  template <typename... Ts>
-  void logImpl(FILE *file_handle, LogSeverity msg_sev,
+  template <typename WithColorsT, typename... Ts>
+  void logImpl(FILE *file_handle, LogSeverity msg_sev, WithColorsT with_colors,
                const Ts &...log_items) const
       noexcept((... && Printer<FileWriter>::isPrintNoexcept<Ts>())) {
 #ifndef ITST_DISABLE_LOGGER
-    if (auto lock = startLogging(file_handle, msg_sev)) {
+    if (auto lock = startLogging(file_handle, msg_sev, with_colors)) {
       auto printer = getPrinter(file_handle);
       (printer(log_items), ...);
       FileWriter{file_handle}("\n");
@@ -281,8 +286,10 @@ protected:
 #endif
   }
 
-  template <typename FormatStringProvider, typename Ts, size_t... I>
-  void internalLogf(FILE *file_handle, LogSeverity msg_sev, Ts log_items_tup,
+  template <typename FormatStringProvider, typename WithColorsT, typename Ts,
+            size_t... I>
+  void internalLogf(FILE *file_handle, LogSeverity msg_sev,
+                    WithColorsT with_colors, Ts log_items_tup,
                     std::index_sequence<I...>) const {
 
     static constexpr auto Splits = cxx17::splitFormatString(
@@ -296,7 +303,7 @@ protected:
     // Note: Wrap the following into an if constexpr, to prevent subsequent
     // errors after the static_assert
     if constexpr (sizeof...(I) + 1 == std::tuple_size_v<decltype(Splits)>) {
-      if (auto lock = startLogging(file_handle, msg_sev)) {
+      if (auto lock = startLogging(file_handle, msg_sev, with_colors)) {
         FileWriter writer{file_handle};
         constexpr auto WriteNonEmpty = [](auto str, FileWriter writer) {
           if constexpr (!str.str().empty())
@@ -353,7 +360,7 @@ public:
   template <typename... Ts>
   const LoggerImpl &log(LogSeverity msg_sev, const Ts &...log_items) const {
 #ifndef ITST_DISABLE_LOGGER
-    logImpl(self().getFileHandle(), msg_sev, log_items...);
+    logImpl(self().getFileHandle(), msg_sev, self().withColors(), log_items...);
 #endif
     return *this;
   }
@@ -363,8 +370,8 @@ public:
                          const Ts &...log_items) const {
 #ifndef ITST_DISABLE_LOGGER
     internalLogf<FormatStringProvider>(
-        self().getFileHandle(), msg_sev, std::tie(log_items...),
-        std::make_index_sequence<sizeof...(Ts)>());
+        self().getFileHandle(), msg_sev, self().withColors(),
+        std::tie(log_items...), std::make_index_sequence<sizeof...(Ts)>());
 #endif
     return *this;
   }
@@ -413,8 +420,14 @@ public:
   //}
 
 private:
+  // fallback case
+  [[nodiscard]] constexpr std::false_type withColors() const noexcept {
+    return {};
+  }
+
   [[nodiscard]] FileLock startLogging(LogSeverity msg_sev) const noexcept {
-    return this->LoggerBase::startLogging(self().getFileHandle(), msg_sev);
+    return this->LoggerBase::startLogging(self().getFileHandle(), msg_sev,
+                                          self().withColors());
   }
 
   [[nodiscard]] constexpr const Derived &self() const noexcept {

@@ -19,8 +19,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(ITST_BUILD_SHARED_LIB "Build a shared library (.so on UNIX-like systems, .dll on Windows) Default is OFF" OFF)
 option(ITST_DEBUG_LOGGING "Set the default log-severity to DEBUG (otherwise, the default is INFO)" OFF)
 option(ITST_DISABLE_LOGGER "Disable all logging statically. It cannot be turned on at runtime (default is OFF). You may want to enable this in high-performance scenarios" OFF)
-option(ITST_DISABLE_ASSERT "Disable the custom ITST_ASSERT macro. Useful in release builds for optimization (default OFF)" OFF)
-
+option(ITST_DISABLE_ASSERT "Disable the custom ITST_ASSERT macro. Useful in release builds for optimization (default is OFF)" OFF)
+option(ITST_ENABLE_COLORS "Enable colored log messages for the console logger (default is ON)" ON)
 
 set(ITST_CONSOLE_LOGGER_TARGET_DEFAULT "stderr")
 if (DEFINED ITST_CONSOLE_LOGGER_TARGET)

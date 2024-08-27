@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <type_traits>
 
 namespace itst {
 std::optional<LogSeverity> LoggerBase::global_enforced_log_severity{};
@@ -40,8 +41,104 @@ void LoggerBase::FileWriter::operator()(
 
 void LoggerBase::flushImpl(FILE *file_handle) noexcept { fflush(file_handle); }
 
-void LoggerBase::printHeader(LogSeverity msg_sev,
-                             FileWriter writer) const noexcept {
+#ifdef ITST_ENABLE_COLORS
+
+// Note: partly copied from LLVM's raw_ostream impl
+// color order matches ANSI escape sequence, don't change
+enum class Colors {
+  BLACK = 0,
+  RED,
+  GREEN,
+  YELLOW,
+  BLUE,
+  MAGENTA,
+  CYAN,
+  WHITE,
+  SAVEDCOLOR,
+  RESET,
+};
+
+// Colorcode macros copied from LLVM
+
+#define COLOR(FGBG, CODE, BOLD) "\033[0;" BOLD FGBG CODE "m"
+
+#define ALLCOLORS(FGBG, BOLD)                                                  \
+  {                                                                            \
+    COLOR(FGBG, "0", BOLD), COLOR(FGBG, "1", BOLD), COLOR(FGBG, "2", BOLD),    \
+        COLOR(FGBG, "3", BOLD), COLOR(FGBG, "4", BOLD),                        \
+        COLOR(FGBG, "5", BOLD), COLOR(FGBG, "6", BOLD), COLOR(FGBG, "7", BOLD) \
+  }
+
+static const char color_codes[2][2][8][10] = {
+    {ALLCOLORS("3", ""), ALLCOLORS("3", "1;")},
+    {ALLCOLORS("4", ""), ALLCOLORS("4", "1;")}};
+
+static constexpr const char *outputColor(char code, bool bold, bool bg) {
+  // NOLINTNEXTLINE
+  return color_codes[bg ? 1 : 0][bold ? 1 : 0][code & 7];
+}
+
+template <typename FileWriter>
+static inline void resetColor(FileWriter writer) {
+  writer("\033[0m");
+}
+
+template <typename FileWriter> void setBold(FileWriter writer) {
+  writer("\033[0;1m");
+}
+
+template <typename FileWriter>
+static inline void setSevColor(LogSeverity msg_sev, FileWriter writer) {
+  Colors col = Colors::RESET;
+
+  switch (msg_sev) {
+  case LogSeverity::Trace:
+    return resetColor(writer);
+  case LogSeverity::Debug:
+    return setBold(writer);
+  case LogSeverity::Info:
+    col = Colors::BLUE;
+    break;
+  case LogSeverity::Warning:
+    col = Colors::MAGENTA;
+    break;
+  case LogSeverity::Error:
+  case LogSeverity::Fatal:
+    col = Colors::RED;
+    break;
+  }
+
+  writer(outputColor(char(col), /*bold*/ true, /*background*/ false));
+}
+
+#endif // ITST_ENABLE_COLORS
+
+void LoggerBase::printHeader(LogSeverity msg_sev, FileWriter writer,
+                             std::true_type /*with_colors*/) const noexcept {
+#ifndef ITST_ENABLE_COLORS
+  return printHeader(msg_sev, writer, std::false_type{});
+#else
+
+  writer(outputColor(char(Colors::BLACK), true, false));
+
+  writer("[");
+  printTimestamp(writer);
+  writer("]");
+
+  setSevColor(msg_sev, writer);
+  writer("[");
+  writer(to_string(msg_sev));
+  writer("]");
+  resetColor(writer);
+
+  writer("[");
+  writer(class_name);
+  writer("]: ");
+#endif
+}
+
+void LoggerBase::printHeader(LogSeverity msg_sev, FileWriter writer,
+                             std::false_type /*with_colors*/) const noexcept {
   writer("[");
   printTimestamp(writer);
   writer("][");
@@ -65,7 +162,6 @@ static constexpr std::array<char, 200> digits() noexcept {
 }
 
 void LoggerBase::printTimestamp(FileWriter writer) noexcept {
-
   static constexpr auto Digits = digits();
 
   struct timespec current_time {};

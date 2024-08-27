@@ -2,6 +2,9 @@
 
 #include "LoggerBase.h"
 
+#include <type_traits>
+
+
 #ifndef ITST_CONSOLE_LOGGER_TARGET
 #define ITST_CONSOLE_LOGGER_TARGET stderr
 #endif
@@ -18,6 +21,10 @@ public:
 private:
   [[nodiscard]] FILE *getFileHandle() const noexcept {
     return ITST_CONSOLE_LOGGER_TARGET;
+  }
+
+  [[nodiscard]] constexpr std::true_type withColors() const noexcept {
+    return {};
   }
 };
 } // namespace itst

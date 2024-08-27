@@ -28,3 +28,8 @@ if(ITST_DISABLE_ASSERT)
 endif()
 
 target_compile_definitions(insect_logger PUBLIC ITST_CONSOLE_LOGGER_TARGET=${ITST_CONSOLE_LOGGER_TARGET})
+
+if (ITST_ENABLE_COLORS)
+    target_compile_definitions(insect_logger PUBLIC ITST_ENABLE_COLORS)
+endif()
+

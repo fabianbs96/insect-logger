@@ -7,7 +7,6 @@
 #include "itst/common/detail/TypeTraitsCXX20.h"
 #endif
 
-#include <concepts>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -15,6 +14,7 @@
 namespace itst {
 
 namespace detail {
+// NOLINTNEXTLINE(readability-identifier-naming)
 template <typename T> struct is_optional : std::false_type {};
 template <typename T> struct is_optional<std::optional<T>> : std::true_type {};
 } // namespace detail
@@ -39,6 +39,7 @@ template <typename... T> struct Overloaded : T... {
 template <typename... T> Overloaded(T...) -> Overloaded<T...>;
 
 template <typename T>
+// NOLINTNEXTLINE(readability-identifier-naming)
 static constexpr bool is_optional_v = detail::is_optional<T>::value;
 
 /// Utility to check the typename of a template instantiation
@@ -61,6 +62,7 @@ struct has_log_traits<T, Printer,
     : std::true_type {};
 
 template <typename T, typename Printer>
+// NOLINTNEXTLINE(readability-identifier-naming)
 static constexpr bool has_log_traits_v = has_log_traits<T, Printer>::value;
 
 template <typename T> struct LogTraits<std::optional<T>> {

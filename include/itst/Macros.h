@@ -20,7 +20,7 @@
 #define ITST_LOG(SEV, ...) logger.log(::itst::LogSeverity::SEV, __VA_ARGS__)
 
 #define ITST_FMT(FMT)                                                          \
-  [] {                                                                         \
+  []() noexcept {                                                              \
     struct Fmt {                                                               \
       const char *Data = FMT;                                                  \
     };                                                                         \

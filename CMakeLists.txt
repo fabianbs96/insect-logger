@@ -10,9 +10,7 @@ project (InsectLogger
 )
 set(CMAKE_PROJECT_NAME "InsectLogger")
 
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -37,6 +35,7 @@ string(APPEND CMAKE_CXX_FLAGS_RELEASE "")
 
 add_library(insect_logger_includes INTERFACE EXCLUDE_FROM_ALL)
 target_include_directories(insect_logger_includes INTERFACE include/)
+target_compile_features(insect_logger_includes INTERFACE cxx_std_17)
 
 add_subdirectory(src)
 

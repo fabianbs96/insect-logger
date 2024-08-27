@@ -1,13 +1,9 @@
 #pragma once
 
-#include <algorithm>
-#include <array>
 #include <string_view>
 #include <tuple>
 
-namespace itst {
-
-namespace cxx17 {
+namespace itst::cxx17 {
 template <char... Str> struct TemplateString {
   [[nodiscard]] static constexpr size_t size() noexcept {
     return sizeof...(Str);
@@ -21,7 +17,15 @@ template <char... Str> struct TemplateString {
     return Data;
   }
 
+  constexpr operator std::string_view() const noexcept { return str(); }
+
   template <char C> using append_t = TemplateString<Str..., C>;
+
+  template <char... OtherStr>
+  constexpr TemplateString<Str..., OtherStr...>
+  operator+(TemplateString<OtherStr...>) const noexcept {
+    return {};
+  }
 };
 
 // NOLINTNEXTLINE(readability-identifier-naming)
@@ -34,7 +38,8 @@ template <typename T, typename U>
 using tuple_append_t = typename tuple_append<T, U>::type;
 
 // NOLINTNEXTLINE(readability-identifier-naming)
-static constexpr size_t c_strlen(const char *Str, size_t Len = 0) {
+static constexpr size_t c_strlen(const char *Str, size_t Len = 0) noexcept {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   return *Str == '\0' ? Len : c_strlen(Str + 1, Len + 1);
 }
 
@@ -54,15 +59,24 @@ using CStrType =
     typename TemplateStringBuilder<StringProvider,
                                    c_strlen(StringProvider{}.Data)>::type;
 template <typename StringProvider>
-static constexpr CStrType<StringProvider> getCStr(StringProvider /*SP*/ = {}) {
+static constexpr CStrType<StringProvider>
+getCStr(StringProvider /*SP*/ = {}) noexcept {
   return {};
 }
 
 template <char... Str>
 static constexpr TemplateString<Str..., '\n'>
-appendLf(TemplateString<Str...> /*S*/) {
+appendLf(TemplateString<Str...> /*S*/) noexcept {
   return {};
 }
+
+#define ITST_STR(X)                                                            \
+  ::itst::cxx17::getCStr([]() noexcept {                                       \
+    struct Str {                                                               \
+      const char *Data = X;                                                    \
+    };                                                                         \
+    return Str{};                                                              \
+  }())
 
 // ---
 
@@ -104,6 +118,4 @@ constexpr auto splitFormatString(TemplateString<Str...> /*S*/) noexcept {
   return typename FmtStringSplitter<TemplateString<>, std::tuple<>,
                                     Str...>::type{};
 }
-} // namespace cxx17
-
-} // namespace itst
+} // namespace itst::cxx17

@@ -5,6 +5,7 @@
 #include "itst/common/TemplateString.h"
 #include "itst/common/TypeTraits.h"
 
+#include <array>
 #include <cassert>
 #include <charconv>
 #include <cstdio>
@@ -89,10 +90,12 @@ protected:
 
   static void printTimestamp(FileWriter writer) noexcept;
 
-  void printHeader(LogSeverity msg_sev, FileWriter writer,
-                   std::true_type with_colors) const noexcept;
-  void printHeader(LogSeverity msg_sev, FileWriter writer,
-                   std::false_type with_colors) const noexcept;
+  static void printHeader(std::string_view class_name, LogSeverity msg_sev,
+                          FileWriter writer,
+                          std::true_type with_colors) noexcept;
+  static void printHeader(std::string_view class_name, LogSeverity msg_sev,
+                          FileWriter writer,
+                          std::false_type with_colors) noexcept;
 
   template <typename Writer> struct Printer {
     Writer writer;
@@ -238,7 +241,7 @@ protected:
       return lock;
     }
 
-    printHeader(msg_sev, FileWriter{file_handle}, with_colors);
+    printHeader(class_name, msg_sev, FileWriter{file_handle}, with_colors);
 
     return lock;
 #else

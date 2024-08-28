@@ -91,7 +91,7 @@ static constexpr auto BoldColorCode = ITST_STR("\033[0;1m");
 
 template <LogSeverity Sev> static constexpr auto sevColorCode() noexcept {
   if constexpr (Sev == LogSeverity::Trace)
-    return ITST_STR("");
+    return ResetColorCode;
   else if constexpr (Sev == LogSeverity::Debug)
     return BoldColorCode;
   else if constexpr (Sev == LogSeverity::Info)

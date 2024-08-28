@@ -40,7 +40,9 @@ public:
       ;
 
   template <typename Writer>
-  inline static void indent(Writer writer, size_t indent_level) noexcept {
+  inline static void
+  indent(Writer writer,
+         size_t indent_level) noexcept(noexcept(std::declval<Writer>()(""))) {
     static constexpr char Indents[] = // NOLINT
         "                                ";
     if (indent_level) {
@@ -87,7 +89,9 @@ protected:
     static FileLock create(FILE *file_handle) noexcept { return {}; }
 #endif
 
-    explicit operator bool() const noexcept { return file_handle != nullptr; }
+    constexpr explicit operator bool() const noexcept {
+      return file_handle != nullptr;
+    }
 
     FILE *file_handle{};
 
@@ -110,9 +114,11 @@ protected:
     Writer writer;
     size_t indent_level = 0;
 
-    inline void indent() const { LoggerBase::indent(writer, indent_level); }
+    inline void indent() const noexcept(noexcept(std::declval<Writer>()(""))) {
+      LoggerBase::indent(writer, indent_level);
+    }
 
-    template <typename T> static constexpr bool isPrintNoexcept() {
+    template <typename T> static constexpr bool isPrintNoexcept() noexcept {
       if (!noexcept(std::declval<Writer>()("")))
         return false;
 
@@ -202,7 +208,7 @@ protected:
         writer("{\n");
         indent_level++;
         for (const auto &sub_element : item) {
-          (*this)(sub_element, true);
+          (*this)(sub_element, /*on_new_line:*/ true);
           writer("\n");
         }
         indent_level--;
@@ -301,7 +307,9 @@ protected:
             size_t... I>
   void internalLogf(FILE *file_handle, LogSeverity msg_sev,
                     WithColorsT with_colors, Ts log_items_tup,
-                    std::index_sequence<I...>) const {
+                    std::index_sequence<I...>) const
+      noexcept((... && Printer<FileWriter>::isPrintNoexcept<
+                           std::tuple_element_t<I, Ts>>())) {
 
     static constexpr auto Splits = cxx17::splitFormatString(
         cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
@@ -347,7 +355,9 @@ template <typename LoggerT> class LogStream {
 public:
   ~LogStream() noexcept;
 
-  template <typename T> const LogStream &operator<<(const T &value) const;
+  template <typename T>
+  const LogStream &operator<<(const T &value) const noexcept(
+      LoggerBase::Printer<LoggerBase::FileWriter>::isPrintNoexcept<T>());
 
 private:
   LogStream(const LoggerImpl<LoggerT> &logger, LogSeverity sev) noexcept;
@@ -453,7 +463,8 @@ template <typename LoggerT> inline LogStream<LoggerT>::~LogStream() noexcept {
 template <typename LoggerT>
 template <typename T>
 inline const itst::LogStream<LoggerT> &
-LogStream<LoggerT>::operator<<(const T &value) const {
+LogStream<LoggerT>::operator<<(const T &value) const noexcept(
+    LoggerBase::Printer<LoggerBase::FileWriter>::isPrintNoexcept<T>()) {
 #ifndef ITST_DISABLE_LOGGER
   if (writer)
     logger.getPrinter(writer.file_handle)(value);

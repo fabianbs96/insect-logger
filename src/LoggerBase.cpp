@@ -110,17 +110,20 @@ static constexpr auto resetAndOpenBracket() noexcept {
 }
 
 template <LogSeverity Sev, typename FieldT>
-static constexpr auto ColoredSeverityFieldImpl =
-    ITST_STR("]") + sevColorCode<Sev>() + FieldT{} + resetAndOpenBracket<Sev>();
+static constexpr auto coloredSeverityFieldImpl(FieldT field) {
+  return ITST_STR("]") + sevColorCode<Sev>() + field +
+         resetAndOpenBracket<Sev>();
+}
 
 static inline std::string_view
 coloredSeverityField(LogSeverity msg_sev) noexcept {
   static constexpr auto ResetAndOpenBracket = ResetColorCode + ITST_STR("[");
   switch (msg_sev) {
+    // Note: Directly access .Data for better codegen
 #define ITST_LOG_SEVERITY(NAME, REP)                                           \
   case LogSeverity::NAME:                                                      \
-    static constexpr auto Str##NAME = ITST_STR("[" #REP "]");                  \
-    return ColoredSeverityFieldImpl<LogSeverity::NAME, decltype(Str##NAME)>;
+    return coloredSeverityFieldImpl<LogSeverity::NAME>(ITST_STR("[" #REP "]")) \
+        .Data;
 #include "itst/LogSeverity.def"
   }
 

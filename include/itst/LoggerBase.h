@@ -49,6 +49,15 @@ public:
     }
   }
 
+  [[nodiscard]] bool isLogEnabledFor(LogSeverity msg_sev) const noexcept {
+#ifndef ITST_DISABLE_LOGGER
+    auto actual_sev = global_enforced_log_severity.value_or(severity);
+    return actual_sev <= msg_sev;
+#else
+    return false;
+#endif
+  }
+
 protected:
   explicit constexpr LoggerBase(std::string_view class_name,
                                 LogSeverity sev) noexcept
@@ -234,8 +243,7 @@ protected:
                         WithColorsT with_colors) const noexcept {
 #ifndef ITST_DISABLE_LOGGER
 
-    auto actual_sev = global_enforced_log_severity.value_or(severity);
-    bool filter_logging = actual_sev > msg_sev;
+    bool filter_logging = !isLogEnabledFor(msg_sev);
     auto lock = FileLock::create(filter_logging ? nullptr : file_handle);
     if (filter_logging) {
       return lock;

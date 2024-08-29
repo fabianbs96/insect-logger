@@ -66,14 +66,17 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
 }
 } // namespace itst::detail
 
+#define ITST_ASSERT_FAIL()                                                     \
+  ITST_LOG_FLUSH();                                                            \
+  ITST_ABORT
+
 #define ITST_ASSERT(X, ...)                                                    \
   do {                                                                         \
     if (!(X)) [[unlikely]] {                                                   \
       ITST_LOG(Fatal, __FILE__, ":", __LINE__, ": Assertion failed: ", #X);    \
       ::itst::detail::assertFailMessage(logger, __FILE__, __LINE__,            \
                                         ##__VA_ARGS__);                        \
-      ITST_LOG_FLUSH();                                                        \
-      ITST_ABORT;                                                              \
+      ITST_ASSERT_FAIL();                                                      \
     }                                                                          \
   } while (false)
 #define ITST_ASSERTF(X, FMT, ...)                                              \
@@ -83,8 +86,7 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
       ::itst::detail::assertFailMessagef(logger,                               \
                                          ITST_FMT("{}:{}: note: " FMT),        \
                                          __FILE__, __LINE__, ##__VA_ARGS__);   \
-      ITST_LOG_FLUSH();                                                        \
-      ITST_ABORT;                                                              \
+      ITST_ASSERT_FAIL();                                                      \
     }                                                                          \
   } while (false)
 
@@ -92,7 +94,8 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(Val1 == Val2, "Expected values to be equal; got: {} vs {}",   \
+    ITST_ASSERTF(Val1 == Val2,                                                 \
+                 "Expected " #X1 " and " #X2 " to be equal; got: {} vs {}",    \
                  Val1, Val2);                                                  \
   } while (false)
 
@@ -100,7 +103,17 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(Val1 != Val2, "Expected values to be unequal; got: {} vs {}", \
+    ITST_ASSERTF(Val1 != Val2,                                                 \
+                 "Expected " #X1 " and " #X2 " to be unequal; got: {} vs {}",  \
+                 Val1, Val2);                                                  \
+  } while (false)
+
+#define ITST_ASSERT_LT(X1, X2)                                                 \
+  do {                                                                         \
+    auto &&Val1 = X1;                                                          \
+    auto &&Val2 = X2;                                                          \
+    ITST_ASSERTF(Val1 < Val2,                                                  \
+                 "Expected " #X1 " to be smaller than " #X2 "; got: {} vs {}", \
                  Val1, Val2);                                                  \
   } while (false)
 
@@ -127,6 +140,12 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
     ITST_ASSERT_NE(X1, X2);                                                    \
   } while (false)
 
+#define ITST_LOGGER_ASSERT_LT(X1, X2)                                          \
+  do {                                                                         \
+    ITST_LOGGER;                                                               \
+    ITST_ASSERT_LT(X1, X2);                                                    \
+  } while (false)
+
 #else // ITST_DISABLE_ASSERT
 
 #define ITST_ASSERT(X, ...)                                                    \
@@ -141,6 +160,10 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
 #define ITST_ASSERT_NE(X1, X2)                                                 \
   do {                                                                         \
   } while (false)
+#define ITST_ASSERT_LT(X1, X2)                                                 \
+  do {                                                                         \
+  } while (false)
+
 #define ITST_LOGGER_ASSERT(X, ...)                                             \
   do {                                                                         \
   } while (false)
@@ -151,6 +174,9 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
   do {                                                                         \
   } while (false)
 #define ITST_LOGGER_ASSERT_NE(X1, X2)                                          \
+  do {                                                                         \
+  } while (false)
+#define ITST_LOGGER_ASSERT_LT(X1, X2)                                          \
   do {                                                                         \
   } while (false)
 #endif // ITST_DISABLE_ASSERT

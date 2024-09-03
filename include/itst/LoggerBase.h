@@ -162,8 +162,6 @@ protected:
 
       if constexpr (has_log_traits_v<T, Printer<Writer>>) {
         LogTraits<T>::printAccordingToType(item, *this);
-      } else if constexpr (has_log_traits_v<T, Printer<Writer>>) {
-        LogTraits<T>::printAccordingToType(item, *this);
       } else if constexpr (std::is_convertible_v<T, std::string_view>) {
         writer(std::string_view(item));
       } else if constexpr (std::is_enum_v<ElemTy> &&
@@ -314,9 +312,9 @@ protected:
     static constexpr auto Splits = cxx17::splitFormatString(
         cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
     static_assert(sizeof...(I) + 1 <= std::tuple_size_v<decltype(Splits)>,
-                  "Not enough format arguments specified");
-    static_assert(sizeof...(I) + 1 >= std::tuple_size_v<decltype(Splits)>,
                   "Too many format arguments specified");
+    static_assert(sizeof...(I) + 1 >= std::tuple_size_v<decltype(Splits)>,
+                  "Not enough format arguments specified");
 
 #ifndef ITST_DISABLE_LOGGER
     // Note: Wrap the following into an if constexpr, to prevent subsequent

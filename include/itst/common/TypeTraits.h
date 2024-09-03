@@ -80,4 +80,18 @@ template <typename T> struct LogTraits<std::optional<T>> {
   }
 };
 
+template <typename T, typename U> struct LogTraits<std::pair<T, U>> {
+  template <typename Printer>
+  static void printAccordingToType(
+      const std::pair<T, U> &item,
+      Printer printer) noexcept(Printer::template isPrintNoexcept<T>() &&
+                                Printer::template isPrintNoexcept<U>()) {
+    printer("(");
+    printer(item.first);
+    printer(", ");
+    printer(item.second);
+    printer(")");
+  }
+};
+
 } // namespace itst

@@ -3,6 +3,8 @@
 #include "itst/LogSeverity.h"
 #include "itst/LoggerBase.h"
 
+#include <type_traits>
+
 #define ITST_LOGGER                                                            \
   static constexpr ::itst::ConsoleLogger logger { __FUNCTION__ }
 #define ITST_LOGGER_SEV(SEV)                                                   \
@@ -64,6 +66,24 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
     logger.logf(f, LogSeverity::Fatal, file, line, m...);
   }
 }
+
+template <typename Op, typename T, typename U>
+static constexpr std::enable_if_t<
+    !std::is_integral_v<T> || !std::is_integral_v<U>, bool>
+assertOpImpl(Op op, const T &first, const U &second) noexcept {
+  return op(first, second);
+}
+
+template <typename Op>
+static constexpr bool assertOpImpl(Op op, int64_t first,
+                                   int64_t second) noexcept {
+  return op(first, second);
+}
+template <typename Op>
+static constexpr bool assertOpImpl(Op op, uint64_t first,
+                                   uint64_t second) noexcept {
+  return op(first, second);
+}
 } // namespace itst::detail
 
 #define ITST_ASSERT_FAIL()                                                     \
@@ -94,7 +114,7 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(Val1 == Val2,                                                 \
+    ITST_ASSERTF(::itst::detail::assertOpImpl(std::equal_to<>{}, Val1, Val2),  \
                  "Expected " #X1 " and " #X2 " to be equal; got: {} vs {}",    \
                  Val1, Val2);                                                  \
   } while (false)
@@ -103,16 +123,17 @@ static inline void assertFailMessagef(const LoggerImpl<LoggerT> &logger, Fmt f,
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(Val1 != Val2,                                                 \
-                 "Expected " #X1 " and " #X2 " to be unequal; got: {} vs {}",  \
-                 Val1, Val2);                                                  \
+    ITST_ASSERTF(                                                              \
+        ::itst::detail::assertOpImpl(std::not_equal_to<>{}, Val1, Val2),       \
+        "Expected " #X1 " and " #X2 " to be unequal; got: {} vs {}", Val1,     \
+        Val2);                                                                 \
   } while (false)
 
 #define ITST_ASSERT_LT(X1, X2)                                                 \
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(Val1 < Val2,                                                  \
+    ITST_ASSERTF(::itst::detail::assertOpImpl(std::less<>{}, Val1, Val2),      \
                  "Expected " #X1 " to be smaller than " #X2 "; got: {} vs {}", \
                  Val1, Val2);                                                  \
   } while (false)

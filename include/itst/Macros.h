@@ -3,6 +3,7 @@
 #include "itst/LogSeverity.h"
 #include "itst/LoggerBase.h"
 
+#include <cstdint>
 #include <type_traits>
 
 #define ITST_LOGGER                                                            \

@@ -4,12 +4,17 @@
 #include "itst/common/TemplateString.h"
 
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
 #include <string_view>
 #include <type_traits>
+
+#ifdef __unix__
+#include <unistd.h>
+#endif
 
 namespace itst {
 std::optional<LogSeverity> LoggerBase::global_enforced_log_severity{};
@@ -132,18 +137,46 @@ coloredSeverityField(LogSeverity msg_sev) noexcept {
 
 #endif // ITST_ENABLE_COLORS
 
-void LoggerBase::printHeader(std::string_view class_name, LogSeverity msg_sev,
-                             FileWriter writer,
-                             std::true_type /*with_colors*/) noexcept {
+static bool fileIsTerminalImpl(int file_handle) noexcept {
+#if defined(__unix__)
+  return isatty(file_handle);
+#else
+  return true;
+#endif
+}
+
+bool LoggerBase::checkIsTerminal(FILE *file_handle) const noexcept {
+  if (has_is_terminal.load(std::memory_order_acquire))
+    return is_terminal;
+
+  bool ret = false;
+  if (file_handle == stdout)
+    ret = fileIsTerminalImpl(STDOUT_FILENO);
+  else if (file_handle == stderr)
+    ret = fileIsTerminalImpl(STDERR_FILENO);
+
+  is_terminal = ret;
+  has_is_terminal = true;
+
+  return ret;
+}
+
+void LoggerBase::printHeader(LogSeverity msg_sev, FileWriter writer,
+                             std::true_type /*with_colors*/) const noexcept {
 #ifndef ITST_ENABLE_COLORS
   return printHeader(msg_sev, writer, std::false_type{});
 #else
 
-  writer(boldFwColor<Colors::BLACK>() + ITST_STR("["));
-  printTimestamp(writer);
-  writer(coloredSeverityField(msg_sev));
-  writer(class_name);
-  writer("]: ");
+  if (isTerminal(writer.file_handle)) {
+    writer(boldFwColor<Colors::BLACK>() + ITST_STR("["));
+    printTimestamp(writer);
+    writer(coloredSeverityField(msg_sev));
+    writer(class_name);
+    writer("]: ");
+  } else {
+    return printHeader(msg_sev, writer, std::false_type{});
+  }
+
 #endif
 }
 
@@ -158,9 +191,8 @@ static constexpr std::string_view severityField(LogSeverity msg_sev) noexcept {
   ITST_BUILTIN_UNREACHABLE;
 }
 
-void LoggerBase::printHeader(std::string_view class_name, LogSeverity msg_sev,
-                             FileWriter writer,
-                             std::false_type /*with_colors*/) noexcept {
+void LoggerBase::printHeader(LogSeverity msg_sev, FileWriter writer,
+                             std::false_type /*with_colors*/) const noexcept {
   writer("[");
   printTimestamp(writer);
   writer(severityField(msg_sev));

@@ -6,6 +6,7 @@
 #include "itst/common/TypeTraits.h"
 
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <charconv>
 #include <cstdio>
@@ -103,12 +104,10 @@ protected:
 
   static void printTimestamp(FileWriter writer) noexcept;
 
-  static void printHeader(std::string_view class_name, LogSeverity msg_sev,
-                          FileWriter writer,
-                          std::true_type with_colors) noexcept;
-  static void printHeader(std::string_view class_name, LogSeverity msg_sev,
-                          FileWriter writer,
-                          std::false_type with_colors) noexcept;
+  void printHeader(LogSeverity msg_sev, FileWriter writer,
+                   std::true_type with_colors) const noexcept;
+  void printHeader(LogSeverity msg_sev, FileWriter writer,
+                   std::false_type with_colors) const noexcept;
 
   template <typename Writer> struct Printer {
     Writer writer;
@@ -253,7 +252,7 @@ protected:
       return lock;
     }
 
-    printHeader(class_name, msg_sev, FileWriter{file_handle}, with_colors);
+    printHeader(msg_sev, FileWriter{file_handle}, with_colors);
 
     return lock;
 #else
@@ -339,10 +338,21 @@ protected:
 #endif
   }
 
+  [[nodiscard]] bool checkIsTerminal(FILE *file_handle) const noexcept;
+  [[nodiscard]] bool isTerminal(FILE *file_handle) const noexcept {
+    if (!has_is_terminal.load(std::memory_order_relaxed))
+      return checkIsTerminal(file_handle);
+
+    return is_terminal;
+  }
+
   // ---
 
   std::string_view class_name{};
   LogSeverity severity{};
+  // synchronized within checkIsTerminal
+  mutable std::atomic_bool has_is_terminal{};
+  mutable bool is_terminal{};
 };
 
 template <typename U> class LoggerImpl;

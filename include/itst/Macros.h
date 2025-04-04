@@ -50,6 +50,7 @@
 #ifndef ITST_DISABLE_ASSERT
 
 namespace itst::detail {
+
 template <typename LoggerT, typename... Msg>
 static inline void assertFailMessage(const LoggerImpl<LoggerT> &logger,
                                      const char *file, unsigned line,
@@ -85,16 +86,30 @@ static constexpr bool assertOpImpl(Op op, uint64_t first,
                                    uint64_t second) noexcept {
   return op(first, second);
 }
+template <typename Op>
+static constexpr bool assertOpImpl(Op op, bool first, bool second) noexcept {
+  return op(first, second);
+}
 } // namespace itst::detail
 
 #define ITST_ASSERT_FAIL()                                                     \
   ITST_LOG_FLUSH();                                                            \
   ITST_ABORT
 
+#define ITST_ASSERT_FAIL_MSG(...)                                              \
+  ITST_LOG(Fatal, "At ", __FILE__, ":", __LINE__, ": Assertion failed",        \
+           ##__VA_ARGS__);                                                     \
+  ITST_ASSERT_FAIL()
+#define ITST_ASSERT_FAIL_MSGF(FMT, ...)                                        \
+  ITST_LOG(Fatal, "At {}:{}: Assertion failed" FMT, __FILE__, __LINE__,        \
+           ##__VA_ARGS__);                                                     \
+  ITST_ASSERT_FAIL()
+
 #define ITST_ASSERT(X, ...)                                                    \
   do {                                                                         \
     if (!(X)) [[unlikely]] {                                                   \
-      ITST_LOG(Fatal, __FILE__, ":", __LINE__, ": Assertion failed: ", #X);    \
+      ITST_LOG(Fatal, "At ", __FILE__, ":", __LINE__,                          \
+               ": Assertion failed: ", #X);                                    \
       ::itst::detail::assertFailMessage(logger, __FILE__, __LINE__,            \
                                         ##__VA_ARGS__);                        \
       ITST_ASSERT_FAIL();                                                      \
@@ -103,7 +118,8 @@ static constexpr bool assertOpImpl(Op op, uint64_t first,
 #define ITST_ASSERTF(X, FMT, ...)                                              \
   do {                                                                         \
     if (!(X)) [[unlikely]] {                                                   \
-      ITST_LOG(Fatal, __FILE__, ":", __LINE__, ": Assertion failed: ", #X);    \
+      ITST_LOG(Fatal, "At ", __FILE__, ":", __LINE__,                          \
+               ": Assertion failed: ", #X);                                    \
       ::itst::detail::assertFailMessagef(logger,                               \
                                          ITST_FMT("{}:{}: note: " FMT),        \
                                          __FILE__, __LINE__, ##__VA_ARGS__);   \
@@ -115,28 +131,36 @@ static constexpr bool assertOpImpl(Op op, uint64_t first,
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(::itst::detail::assertOpImpl(std::equal_to<>{}, Val1, Val2),  \
-                 "Expected " #X1 " and " #X2 " to be equal; got: {} vs {}",    \
-                 Val1, Val2);                                                  \
+    if (!::itst::detail::assertOpImpl(std::equal_to<>{}, Val1, Val2))          \
+        [[unlikely]] {                                                         \
+      ITST_ASSERT_FAIL_MSG(": Expected '" #X1 "' and '" #X2                    \
+                           "' to be equal; got: '",                            \
+                           Val1, "' vs '", Val2, "'");                         \
+    }                                                                          \
   } while (false)
 
 #define ITST_ASSERT_NE(X1, X2)                                                 \
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(                                                              \
-        ::itst::detail::assertOpImpl(std::not_equal_to<>{}, Val1, Val2),       \
-        "Expected " #X1 " and " #X2 " to be unequal; got: {} vs {}", Val1,     \
-        Val2);                                                                 \
+    if (!::itst::detail::assertOpImpl(std::not_equal_to<>{}, Val1, Val2))      \
+        [[unlikely]] {                                                         \
+      ITST_ASSERT_FAIL_MSG(": Expected '" #X1 "' and '" #X2                    \
+                           "' to be unequal; got: '",                          \
+                           Val1, "' vs '", Val2, "'");                         \
+    }                                                                          \
   } while (false)
 
 #define ITST_ASSERT_LT(X1, X2)                                                 \
   do {                                                                         \
     auto &&Val1 = X1;                                                          \
     auto &&Val2 = X2;                                                          \
-    ITST_ASSERTF(::itst::detail::assertOpImpl(std::less<>{}, Val1, Val2),      \
-                 "Expected " #X1 " to be smaller than " #X2 "; got: {} vs {}", \
-                 Val1, Val2);                                                  \
+    if (!::itst::detail::assertOpImpl(std::less<>{}, Val1, Val2))              \
+        [[unlikely]] {                                                         \
+      ITST_ASSERT_FAIL_MSG(": Expected '" #X1 "' to be smaller than '" #X2     \
+                           "'; got: '",                                        \
+                           Val1, "' vs '", Val2, "'");                         \
+    }                                                                          \
   } while (false)
 
 #define ITST_LOGGER_ASSERT(X, ...)                                             \
@@ -170,6 +194,18 @@ static constexpr bool assertOpImpl(Op op, uint64_t first,
 
 #else // ITST_DISABLE_ASSERT
 
+#define ITST_ASSERT_FAIL()                                                     \
+  do {                                                                         \
+  } while (false)
+
+#define ITST_ASSERT_FAIL_MSG(...)                                              \
+  do {                                                                         \
+  } while (false)
+
+#define ITST_ASSERT_FAIL_MSGF(FMT, ...)                                        \
+  do {                                                                         \
+  } while (false)
+
 #define ITST_ASSERT(X, ...)                                                    \
   do {                                                                         \
   } while (false)
@@ -189,7 +225,7 @@ static constexpr bool assertOpImpl(Op op, uint64_t first,
 #define ITST_LOGGER_ASSERT(X, ...)                                             \
   do {                                                                         \
   } while (false)
-#define ITST_LOGGER_ASSERTF(, FMT, ...)                                        \
+#define ITST_LOGGER_ASSERTF(X, FMT, ...)                                       \
   do {                                                                         \
   } while (false)
 #define ITST_LOGGER_ASSERT_EQ(X1, X2)                                          \

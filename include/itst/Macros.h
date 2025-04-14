@@ -4,6 +4,7 @@
 #include "itst/LoggerBase.h"
 
 #include <cstdint>
+#include <functional>
 #include <type_traits>
 
 #define ITST_LOGGER                                                            \
@@ -163,6 +164,18 @@ static constexpr bool assertOpImpl(Op op, bool first, bool second) noexcept {
     }                                                                          \
   } while (false)
 
+#define ITST_ASSERT_GE(X1, X2)                                                 \
+  do {                                                                         \
+    auto &&Val1 = X1;                                                          \
+    auto &&Val2 = X2;                                                          \
+    if (!::itst::detail::assertOpImpl(std::greater_equal<>{}, Val1, Val2))     \
+        [[unlikely]] {                                                         \
+      ITST_ASSERT_FAIL_MSG(": Expected '" #X1                                  \
+                           "' to be greater or equal than '" #X2 "'; got: '",  \
+                           Val1, "' vs '", Val2, "'");                         \
+    }                                                                          \
+  } while (false)
+
 #define ITST_LOGGER_ASSERT(X, ...)                                             \
   do {                                                                         \
     ITST_LOGGER;                                                               \
@@ -190,6 +203,12 @@ static constexpr bool assertOpImpl(Op op, bool first, bool second) noexcept {
   do {                                                                         \
     ITST_LOGGER;                                                               \
     ITST_ASSERT_LT(X1, X2);                                                    \
+  } while (false)
+
+#define ITST_LOGGER_ASSERT_GE(X1, X2)                                          \
+  do {                                                                         \
+    ITST_LOGGER;                                                               \
+    ITST_ASSERT_GE(X1, X2);                                                    \
   } while (false)
 
 #else // ITST_DISABLE_ASSERT
@@ -221,6 +240,9 @@ static constexpr bool assertOpImpl(Op op, bool first, bool second) noexcept {
 #define ITST_ASSERT_LT(X1, X2)                                                 \
   do {                                                                         \
   } while (false)
+#define ITST_ASSERT_GE(X1, X2)                                                 \
+  do {                                                                         \
+  } while (false)
 
 #define ITST_LOGGER_ASSERT(X, ...)                                             \
   do {                                                                         \
@@ -235,6 +257,9 @@ static constexpr bool assertOpImpl(Op op, bool first, bool second) noexcept {
   do {                                                                         \
   } while (false)
 #define ITST_LOGGER_ASSERT_LT(X1, X2)                                          \
+  do {                                                                         \
+  } while (false)
+#define ITST_LOGGER_ASSERT_GE(X1, X2)                                          \
   do {                                                                         \
   } while (false)
 #endif // ITST_DISABLE_ASSERT

@@ -107,8 +107,8 @@ static constexpr bool assertOpImpl(Op op, bool first, bool second) noexcept {
   } while (false)
 #define ITST_ASSERT_FAIL_MSGF(FMT, ...)                                        \
   do {                                                                         \
-    ITST_LOG(Fatal, "At {}:{}: Assertion failed" FMT, __FILE__, __LINE__,      \
-             ##__VA_ARGS__);                                                   \
+    ITST_LOGF(Fatal, "At {}:{}: Assertion failed" FMT, __FILE__, __LINE__,     \
+              ##__VA_ARGS__);                                                  \
     ITST_ASSERT_FAIL();                                                        \
   } while (0)
 

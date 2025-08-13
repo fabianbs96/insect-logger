@@ -3,6 +3,7 @@
 #include "itst/Core.h"
 #include "itst/LogSeverity.h"
 #include "itst/common/TemplateString.h"
+#include "itst/common/TypeName.h"
 #include "itst/common/TypeTraits.h"
 
 #include <array>
@@ -165,9 +166,10 @@ protected:
         writer(std::string_view(item));
       } else if constexpr (std::is_enum_v<ElemTy> &&
                            has_adl_to_string_v<ElemTy>) {
-        /// NOTE: Have the case for enums here already, since enums are
+        /// NOTE: Have the case for enums here already, since unscoped enums are
         /// printable as integers and we want to give pretty-printing higher
-        /// priority NOTE: Explicitly cast to std::string_view, since we now
+        /// priority
+        /// NOTE: Explicitly cast to std::string_view, since we now
         /// allow to_string to return sth different than string - it is just
         /// sufficient to be convertible to string_view
         writer(std::string_view(adl_to_string(item)));
@@ -211,6 +213,16 @@ protected:
         indent_level--;
         indent();
         writer("}");
+      } else if constexpr (std::is_enum_v<ElemTy>) {
+        // Is (scoped) enum, but we have no specializion on how to print
+        writer(itst::getTypeName<ElemTy>());
+        writer("(");
+        std::array<char, sizeof("18446744073709551615")> buf{};
+        auto [ptr, err] =
+            std::to_chars(buf.data(), buf.data() + buf.size(),
+                          std::underlying_type_t<ElemTy>(item), 10);
+        writer(std::string_view(buf.data(), ptr - buf.data()));
+        writer(")");
       } else {
         // hint: static_assert is expected to be at compile time not runtime
         static_assert(

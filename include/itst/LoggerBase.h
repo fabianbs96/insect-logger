@@ -257,15 +257,8 @@ protected:
   FileLock startLogging(FILE *file_handle, LogSeverity msg_sev,
                         WithColorsT with_colors) const noexcept {
 #ifndef ITST_DISABLE_LOGGER
-
-    bool filter_logging = !isLogEnabledFor(msg_sev);
-    auto lock = FileLock::create(filter_logging ? nullptr : file_handle);
-    if (filter_logging) {
-      return lock;
-    }
-
+    auto lock = FileLock::create(file_handle);
     printHeader(msg_sev, FileWriter{file_handle}, with_colors);
-
     return lock;
 #else
     return FileLock::create(nullptr);
@@ -303,6 +296,9 @@ protected:
                const Ts &...log_items) const
       noexcept((... && Printer<FileWriter>::isPrintNoexcept<Ts>())) {
 #ifndef ITST_DISABLE_LOGGER
+    if (!isLogEnabledFor(msg_sev))
+      return;
+
     if (auto lock = startLogging(file_handle, msg_sev, with_colors)) {
       auto printer = getPrinter(file_handle);
       (printer(log_items), ...);
@@ -319,6 +315,9 @@ protected:
                     std::index_sequence<I...>) const
       noexcept((... && Printer<FileWriter>::isPrintNoexcept<
                            std::tuple_element_t<I, Ts>>())) {
+
+    if (!isLogEnabledFor(msg_sev))
+      return;
 
     static constexpr auto Splits = cxx17::splitFormatString(
         cxx17::appendLf(cxx17::getCStr<FormatStringProvider>()));
